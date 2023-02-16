@@ -1,28 +1,7 @@
-# python-cli-template
+# sapinvoices
 
-A template repository for creating Python CLI applications.
-
-## App setup (delete this section and above after initial application setup)
-
-1. Rename "my_app" to the desired app name across the repo. (May be helpful to do a project-wide find-and-replace).
-2. Update Python version if needed.
-3. Install all dependencies with `make install`  to create initial Pipfile.lock with latest dependency versions.
-4. Add initial app description to README and update initial required ENV variable documentation as needed.
-5. Update license if needed (check app-specific dependencies for licensing terms).
-6. Check Github repository settings:
-   - Confirm repo branch protection settings are correct (see [dev docs](https://mitlibraries.github.io/guides/basics/github.html) for details)
-   - Confirm that all of the following are enabled in the repo's code security and analysis settings:
-      - Dependabot alerts
-      - Dependabot security updates
-      - Secret scanning
-7. Create a Sentry project for the app if needed (we want this for most apps):
-   - Send initial exceptions to Sentry project for dev, stage, and prod environments to create them.
-   - Create an alert for the prod environment only, with notifications sent to the appropriate team(s).
-   - If *not* using Sentry, delete Sentry configuration from config.py and test_config.py, and remove sentry_sdk from project dependencies.
-
-# my_app
-
-Description of the app
+Transmits ready-to-be-paid invoice data from Alma to MIT accounts payable department's SAP system
+sets trasmitted invoice to paid in Alma
 
 ## Development
 
@@ -30,9 +9,18 @@ Description of the app
 - To update dependencies: `make update`
 - To run unit tests: `make test`
 - To lint the repo: `make lint`
-- To run the app: `pipenv run my_app --help`
+- To run the app: `pipenv run sapinvoices --help`
 
 ## Required ENV
 
 - `SENTRY_DSN` = If set to a valid Sentry DSN, enables Sentry exception monitoring. This is not needed for local development.
 - `WORKSPACE` = Set to `dev` for local development, this will be set to `stage` and `prod` in those environments by Terraform.
+- `ALMA_API_URL` = Base URL for making Alma API calls
+- `ALMA_API_READ_WRITE_KEY` = API key for making Alma API calls
+- `SAP_DROPBOX_CONNECTION` = JSON formatted connection information for accessing SAP dropbox
+- `SAP_REPLY_TO_EMAIL`
+- `SAP_FINAL_RECIPIENT_EMAIL` = moira list to recieves final run emails
+- `SAP_REVIEW_RECIPIENT_EMAIL` = moira list to recieve review run emails
+- `SES_SEND_FROM_EMAIL`
+- `SSM_PATH`
+- `LOG_LEVEL`
