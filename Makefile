@@ -29,7 +29,7 @@ coveralls: test
 
 ### Code quality and safety commands ###
 
-lint: bandit black mypy pylama safety ## Run linting, code quality, and safety checks
+lint: bandit black mypy pylama pydocstyle safety ## Run linting, code quality, and safety checks
 
 bandit:
 	pipenv run bandit -r sapinvoices
@@ -42,6 +42,9 @@ mypy:
 
 pylama:
 	pipenv run pylama --options setup.cfg
+
+pydocstyle:
+	pipenv run pydocstyle sapinvoices
 
 safety:
 	pipenv check
