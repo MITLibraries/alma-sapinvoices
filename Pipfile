@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 click = "*"
 sentry-sdk = "*"
+freezegun = "*"
 
 [dev-packages]
 bandit = "*"
@@ -15,9 +16,10 @@ coveralls = "*"
 mypy = "*"
 pylama = {extras = ["all"], version = "*"}
 pytest = "*"
+pydocstyle = "*"
 
 [requires]
 python_version = "3.11"
 
 [scripts]
-sapinvoices = "python -c \"from sapinvoices.cli import main; main()\""
+sap = "python -c \"from sapinvoices.cli import sap; sap()\""
