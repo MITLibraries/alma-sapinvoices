@@ -17,6 +17,8 @@ mypy = "*"
 pylama = {extras = ["all"], version = "*"}
 pytest = "*"
 pydocstyle = "*"
+requests-mock = "*"
+types-requests = "*"
 
 [requires]
 python_version = "3.11"

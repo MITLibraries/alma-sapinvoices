@@ -3,10 +3,10 @@ import os
 
 import sentry_sdk
 
-EXPECTED_ENVIRONMENT_VARIABLES = [
+REQUIRED_ENVIRONMENT_VARIABLES = [
     "ALMA_API_URL",
     "ALMA_API_READ_WRITE_KEY",
-    "SAP_DROPBOX_CONNECTION",
+    "SAP_DROPBOX_CLOUDCONNECTOR_JSON",
     "SAP_REPLY_TO_EMAIL",
     "SAP_FINAL_RECIPIENT_EMAIL",
     "SAP_REVIEW_RECIPIENT_EMAIL",
@@ -50,8 +50,11 @@ def configure_sentry() -> str:
 
 def load_config_values() -> dict:
     settings = {
-        variable: os.environ[variable] for variable in EXPECTED_ENVIRONMENT_VARIABLES
+        variable: os.environ[variable] for variable in REQUIRED_ENVIRONMENT_VARIABLES
     }
+    # add optional settings
+    settings["TIMEOUT"] = os.getenv("ALMA_API_TIMEOUT", "30")
+    # SSM safety check
     if "prod" in settings["SSM_PATH"] and settings["WORKSPACE"] != "prod":
         raise RuntimeError(
             "Production SSM_PATH may ONLY be used in the production "
