@@ -133,14 +133,14 @@ def test_get_invoices_by_status(alma_client):
     }
     test_url = (
         "https://example.com/acq/invoices?invoice_workflow_status"
-        "=paid&limit=100&offset=0"
+        "=test&limit=100&offset=0"
     )
     with requests_mock.Mocker() as mocker:
         mocker.get(
             test_url,
             json=invoice_records,
         )
-        invoices = alma_client.get_invoices_by_status("paid")
+        invoices = alma_client.get_invoices_by_status("test")
         assert list(invoices) == invoice_records["invoice"]
         assert mocker.last_request.url == test_url
 

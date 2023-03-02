@@ -4,24 +4,32 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+boto3 = "*"
 click = "*"
+flatdict ="*"
 sentry-sdk = "*"
 freezegun = "*"
+requests ="*"
+paramiko = "*"
 
 [dev-packages]
 bandit = "*"
 black = "*"
+boto3-stubs = "*"
 coverage = "*"
 coveralls = "*"
+mock-ssh-server = "*"
+moto = "*"
 mypy = "*"
 pylama = {extras = ["all"], version = "*"}
 pytest = "*"
 pydocstyle = "*"
 requests-mock = "*"
 types-requests = "*"
+types-paramiko = "*"
 
 [requires]
 python_version = "3.11"
 
 [scripts]
-sap = "python -c \"from sapinvoices.cli import sap; sap()\""
+sap = "python -c \"from sapinvoices.cli import main; main()\""
