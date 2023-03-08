@@ -75,6 +75,8 @@ def test_sap_invoices_final_run_real_run(
         ),
     )
     result = runner.invoke(main, ["process-invoices", "--final-run", "--real-run"])
+    print(result.exception)
+    print(result.output)
     assert result.exit_code == 0
     assert "Logger 'root' configured with level=INFO" in caplog.text
     assert (
@@ -83,3 +85,9 @@ def test_sap_invoices_final_run_real_run(
     assert "Starting SAP invoices process with options" in caplog.text
     assert "Final run: True" in caplog.text
     assert "Real run: True" in caplog.text
+    assert (
+        "Something went wrong marking invoice '02' paid in Alma, it "
+        "should be investigated manually" in caplog.text
+    )
+    assert "SAP invoice process completed for a final run" in caplog.text
+    assert "2 monograph invoices retrieved and processed:" in caplog.text

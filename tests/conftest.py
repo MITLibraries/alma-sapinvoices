@@ -13,6 +13,14 @@ from sapinvoices.alma import AlmaClient
 
 
 @pytest.fixture(autouse=True)
+def aws_credentials():
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+    os.environ["AWS_SECURITY_TOKEN"] = "testing"
+    os.environ["AWS_SESSION_TOKEN"] = "testing"
+
+
+@pytest.fixture(autouse=True)
 def test_env():
     os.environ = {
         "ALMA_API_URL": "https://example.com",
@@ -43,14 +51,6 @@ def alma_client():
 
 
 @pytest.fixture(autouse=True)
-def aws_credentials():
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-
-
-@pytest.fixture(autouse=True)
 def mocked_ses():
     with mock_ses():
         ses = boto3.client("ses", region_name="us-east-1")
@@ -78,6 +78,24 @@ def test_sftp_private_key_fixture():
         yield test_ssh_key_file.read()
 
 
+@pytest.fixture(autouse=True)
+def mocked_ssm():
+    with mock_ssm():
+        ssm = boto3.client("ssm", region_name="us-east-1")
+
+        ssm.put_parameter(
+            Name="/test/example/SAP_SEQUENCE",
+            Value="1001,20210722000000,ser",
+            Type="StringList",
+        )
+        ssm.put_parameter(
+            Name="/test/example/TEST_PARAM",
+            Value="abc123",
+            Type="SecureString",
+        )
+        yield ssm
+
+
 @pytest.fixture()
 def mocked_alma_no_invoices():
     with requests_mock.Mocker() as mocker:
@@ -87,103 +105,6 @@ def mocked_alma_no_invoices():
             json={"total_record_count": 0},
         )
         yield mocker
-
-
-@pytest.fixture(autouse=True)
-def mocked_ssm(test_sftp_private_key):
-    with mock_ssm():
-        ssm = boto3.client("ssm", region_name="us-east-1")
-        ssm.put_parameter(
-            Name="/test/example/ALMA_API_ACQ_READ_KEY",
-            Value="abc123",
-            Type="SecureString",
-        )
-        ssm.put_parameter(
-            Name="/test/example/ALMA_API_URL",
-            Value="http://example.com/",
-            Type="String",
-        )
-        ssm.put_parameter(
-            Name="/test/example/ALMA_DATA_WAREHOUSE_USER",
-            Value="fake_dw_user",
-            Type="String",
-        )
-        ssm.put_parameter(
-            Name="/test/example/ALMA_DATA_WAREHOUSE_PASSWORD",
-            Value="fake_dw_password",
-            Type="SecureString",
-        )
-        ssm.put_parameter(
-            Name="/test/example/ALMA_DATA_WAREHOUSE_HOST",
-            Value="dw.fake.edu",
-            Type="String",
-        )
-        ssm.put_parameter(
-            Name="/test/example/ALMA_DATA_WAREHOUSE_PORT",
-            Value="0000",
-            Type="String",
-        )
-        ssm.put_parameter(
-            Name="/test/example/ALMA_DATA_WAREHOUSE_SID",
-            Value="ABCDE",
-            Type="String",
-        )
-        ssm.put_parameter(
-            Name="/test/example/LLAMA_LOG_LEVEL",
-            Value="warning",
-            Type="String",
-        )
-        ssm.put_parameter(
-            Name="/test/example/SAP_DROPBOX_HOST",
-            Value="stage.host",
-            Type="String",
-        )
-        ssm.put_parameter(
-            Name="/test/example/SAP_DROPBOX_KEY",
-            Value=test_sftp_private_key,
-            Type="SecureString",
-        )
-        ssm.put_parameter(
-            Name="/test/example/SAP_DROPBOX_PORT",
-            Value="0000",
-            Type="String",
-        )
-        ssm.put_parameter(
-            Name="/test/example/SAP_DROPBOX_USER",
-            Value="stage-dropbox-user",
-            Type="String",
-        )
-        ssm.put_parameter(
-            Name="/test/example/SAP_FINAL_RECIPIENT_EMAILS",
-            Value="final_1@example.com,final_2@example.com",
-            Type="StringList",
-        )
-        ssm.put_parameter(
-            Name="/test/example/SAP_REPLY_TO_EMAIL",
-            Value="replyto@example.com",
-            Type="String",
-        )
-        ssm.put_parameter(
-            Name="/test/example/SAP_REVIEW_RECIPIENT_EMAILS",
-            Value="review@example.com",
-            Type="StringList",
-        )
-        ssm.put_parameter(
-            Name="/test/example/SAP_SEQUENCE",
-            Value="1001,20210722000000,ser",
-            Type="StringList",
-        )
-        ssm.put_parameter(
-            Name="/test/example/SENTRY_DSN",
-            Value="sentry_123456",
-            Type="SecureString",
-        )
-        ssm.put_parameter(
-            Name="/test/example/SES_SEND_FROM_EMAIL",
-            Value="from@example.com",
-            Type="String",
-        )
-        yield ssm
 
 
 @pytest.fixture(autouse=True)
@@ -201,18 +122,19 @@ def mocked_alma():
             json={"payment": {"payment_status": {"desc": "string", "value": "PAID"}}},
         )
         mocker.post(
-            "https://example.com/acq/invoices/0000055555000002?op=paid",
+            "https://example.com/acq/invoices/01?op=paid",
             complete_qs=True,
             json={"payment": {"payment_status": {"desc": "string", "value": "PAID"}}},
         )
         mocker.post(
-            "https://example.com/acq/invoices/0000055555000003?op=paid",
+            "https://example.com/acq/invoices/02?op=paid",
             complete_qs=True,
-            json={"payment": {"payment_status": {"desc": "string", "value": "PAID"}}},
-        )
-        mocker.post(
-            "http://example.com/acq/invoices/0000055555000001",
             json={"payment": {"payment_status": {"desc": "string", "value": "WRONG"}}},
+        )
+        mocker.post(
+            "https://example.com/acq/invoices/03?op=paid",
+            complete_qs=True,
+            json={"payment": {"payment_status": {"desc": "string", "value": "PAID"}}},
         )
 
         with open(

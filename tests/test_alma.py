@@ -106,7 +106,7 @@ def test_mark_invoice_paid(alma_client):
             "voucher_currency": {"value": payment_currency},
         }
     }
-    mocked_response = {"test": "invoice_paid"}
+    mocked_response = {"payment": {"payment_status": {"value": "PAID"}}}
     with requests_mock.Mocker(case_sensitive=True) as mocker:
         mocker.post(
             test_url,
