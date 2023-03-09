@@ -4,15 +4,17 @@ import collections
 import json
 import logging
 from datetime import datetime
+from io import BytesIO, StringIO
 from math import fsum
 from typing import Any, List, Literal, Optional, Tuple
 
+import fabric
 import flatdict  # type: ignore
+from paramiko import RSAKey
 
 from sapinvoices.alma import AlmaClient
 from sapinvoices.config import load_config_values
 from sapinvoices.email import Email
-from sapinvoices.sftp import SFTP
 from sapinvoices.ssm import SSM
 
 logger = logging.getLogger(__name__)
@@ -644,7 +646,7 @@ def run(  # noqa pylint R0913 Too many arguments
     real_run: bool,
 ) -> dict:
     sap_config = load_config_values()
-    dropbox_config = json.loads(sap_config["SAP_DROPBOX_CLOUDCONNECTOR_JSON"])
+    dropbox_connection = json.loads(sap_config["SAP_DROPBOX_CLOUDCONNECTOR_JSON"])
 
     logger.info("Starting file generation process for run %s", invoices_type)
     data_file_name, control_file_name = generate_sap_file_names(
@@ -684,28 +686,31 @@ def run(  # noqa pylint R0913 Too many arguments
         )
 
         if real_run:
-            # Send data and control files to SAP dropbox via SFTP
             logger.info("Real run, sending files to SAP dropbox")
-            sftp = SFTP()
-            sftp.authenticate(
-                host=dropbox_config["HOST"],
-                port=dropbox_config["PORT"],
-                username=dropbox_config["USER"],
-                private_key=dropbox_config["KEY"],
-            )
-            sftp.send_file(data_file_contents, f"dropbox/{data_file_name}")
-            logger.info(
-                "Sent data file '%s' to SAP dropbox %s",
-                data_file_name,
-                sap_config["WORKSPACE"],
-            )
-            sftp.send_file(control_file_contents, f"dropbox/{control_file_name}")
-            logger.info(
-                "Sent control file '%s' to SAP dropbox %s",
-                control_file_name,
-                sap_config["WORKSPACE"],
-            )
-            sftp.client.close()
+            pkey = RSAKey.from_private_key(StringIO(dropbox_connection["KEY"]))
+            with fabric.Connection(
+                host=dropbox_connection["HOST"],
+                port=dropbox_connection["PORT"],
+                user=dropbox_connection["USER"],
+                connect_kwargs={
+                    "pkey": pkey,
+                },
+            ) as c:
+                c.put(
+                    BytesIO(bytes(data_file_contents, encoding="utf-8")),
+                    f"dropbox/{data_file_name}",
+                )
+                logger.info(
+                    "Sent data file '%s' to SAP dropbox %s",
+                    data_file_name,
+                    sap_config["WORKSPACE"],
+                )
+                c.put(control_file_contents, f"dropbox/{control_file_name}")
+                logger.info(
+                    "Sent control file '%s' to SAP dropbox %s",
+                    control_file_name,
+                    sap_config["WORKSPACE"],
+                )
 
             # Update sequence numbers in SSM
             logger.info("Real run, updating SAP sequence in Parameter Store")

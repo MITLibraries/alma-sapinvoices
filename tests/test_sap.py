@@ -713,8 +713,8 @@ def test_run_final_real(  # noqa pylint R0913 Too many arguments
     alma_client,
     monkeypatch,
     caplog,
+    sftp,
     invoices_for_sap,
-    mocked_sftp_server,
     test_sftp_private_key,
     problem_invoices,
 ):
@@ -722,13 +722,14 @@ def test_run_final_real(  # noqa pylint R0913 Too many arguments
         "SAP_DROPBOX_CLOUDCONNECTOR_JSON",
         json.dumps(
             {
-                "HOST": mocked_sftp_server.host,
-                "PORT": mocked_sftp_server.port,
+                "HOST": "example.com",
+                "PORT": "8000",
                 "KEY": test_sftp_private_key,
                 "USER": "test-dropbox-user",
             }
         ),
     )
+
     sap.run(
         alma_client,
         problem_invoices,

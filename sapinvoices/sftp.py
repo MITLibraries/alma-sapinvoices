@@ -1,6 +1,6 @@
 from io import BytesIO, StringIO
 
-import paramiko
+import fabric
 
 
 class SFTP:
@@ -8,14 +8,14 @@ class SFTP:
 
     def __init__(self) -> None:
         """Initizliaze SFTP instance."""
-        self.client = paramiko.SSHClient()
+        self.client = fabric.SSHClient()
 
     def authenticate(
         self, host: str, port: int, username: str, private_key: str
     ) -> None:
         """Authenticate the client to an SFTP host."""
-        self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        pkey = paramiko.RSAKey.from_private_key(StringIO(private_key))
+        self.client.set_missing_host_key_policy(fabric.AutoAddPolicy())
+        pkey = fabric.RSAKey.from_private_key(StringIO(private_key))
         self.client.connect(
             hostname=host,
             port=port,
@@ -25,9 +25,7 @@ class SFTP:
             disabled_algorithms={"pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]},
         )
 
-    def send_file(
-        self, file_contents: str, file_path: str
-    ) -> paramiko.sftp_attr.SFTPAttributes:
+    def send_file(self, file_contents: str, file_path: str):
         """Send the string contents of a file to specified path on the SFTP server.
 
         The file_path parameter should include the path and file name e.g.
@@ -37,7 +35,6 @@ class SFTP:
 
         Returns: SFTPAttributes object containing attributes of sent file on the server
         """
-        sftp_session = self.client.open_sftp()
-        return sftp_session.putfo(
+        return fabric.Connection.put(
             BytesIO(bytes(file_contents, encoding="utf-8")), file_path
         )

@@ -6,7 +6,8 @@ import click
 
 from sapinvoices import sap
 from sapinvoices.alma import AlmaClient
-from sapinvoices.config import configure_logger, configure_sentry, load_config_values
+from sapinvoices.config import (configure_logger, configure_sentry,
+                                load_config_values)
 
 logger = logging.getLogger(__name__)
 

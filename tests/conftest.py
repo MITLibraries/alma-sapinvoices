@@ -3,10 +3,10 @@ import os
 from datetime import datetime
 
 import boto3
-import mockssh
 import pytest
 import requests_mock
 from click.testing import CliRunner
+from fabric.testing.fixtures import sftp
 from moto import mock_ses, mock_ssm
 
 from sapinvoices.alma import AlmaClient
@@ -56,18 +56,6 @@ def mocked_ses():
         ses = boto3.client("ses", region_name="us-east-1")
         ses.verify_email_identity(EmailAddress="from@example.com")
         yield ses
-
-
-@pytest.fixture()
-def mocked_sftp_server():
-    users = {
-        "test-dropbox-user": "tests/fixtures/sample-ssh-key",
-    }
-    with mockssh.Server(users) as server:
-        client = server.client("test-dropbox-user")
-        client.exec_command("mkdir dropbox")
-        yield server
-        client.exec_command("rm -r dropbox")
 
 
 @pytest.fixture(name="test_sftp_private_key")
