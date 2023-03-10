@@ -2,8 +2,7 @@ import logging
 
 import pytest
 
-from sapinvoices.config import (configure_logger, configure_sentry,
-                                load_config_values)
+from sapinvoices.config import configure_logger, configure_sentry, load_config_values
 
 
 def test_configure_logger_with_invalid_level_raises_error():

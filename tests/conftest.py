@@ -6,7 +6,7 @@ import boto3
 import pytest
 import requests_mock
 from click.testing import CliRunner
-from fabric.testing.fixtures import sftp as mocked_sftp
+from fabric.testing.fixtures import sftp as mocked_sftp  # noqa
 from moto import mock_ses, mock_ssm
 
 from sapinvoices.alma import AlmaClient
