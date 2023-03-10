@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 from typing import Optional
 
@@ -7,6 +8,7 @@ import click
 from sapinvoices import sap
 from sapinvoices.alma import AlmaClient
 from sapinvoices.config import configure_logger, configure_sentry, load_config_values
+from sapinvoices.sample_data import load_sample_data
 
 logger = logging.getLogger(__name__)
 
@@ -19,17 +21,41 @@ def main(ctx: click.Context) -> None:
 
 
 @main.command()
-@click.pass_context
-def create_sandbox_data(ctx: click.Context) -> None:
+@click.option(
+    "-l",
+    "--log-level",
+    envvar="LOG_LEVEL",
+    help="Case-insensitive Python log level to use, e.g. debug or warning. Defaults to "
+    "INFO if not provided or found in ENV.",
+)
+def create_sandbox_data(log_level: Optional[str]) -> None:
     """Create sample data in the Alma sandbox instance.
 
-    In order to run successfully, the sandbox Acquisitions read/write API key must be
-    set in config (in .env if running locally, or in SSM if on stage). This command
-    will not run in the production environment, and should never be run with production
-    config values.
+    This command will not run in the production environment, and should never be run with
+    production config values.
     """
-    logger.info("Creating sample data in Alma sandbox for today: %s", ctx.obj["today"])
-    click.echo("sap data gets created in the sandbox...")
+    config_values = load_config_values()
+    alma_client = AlmaClient()
+    log_level = log_level or "INFO"
+    root_logger = logging.getLogger()
+    logger.info(configure_logger(root_logger, log_level))
+    logger.info(configure_sentry())
+    if config_values["WORKSPACE"] == "prod":
+        logger.info(
+            "This command may not be run in the production environment, aborting"
+        )
+        raise click.Abort()
+    alma_client = AlmaClient()
+    with open(
+        "sample-data/sample-sap-invoice-data.json", encoding="utf-8"
+    ) as sample_invoice_file:
+        contents = json.load(sample_invoice_file)
+    invoices_created = load_sample_data(alma_client, contents)
+    logger.info(
+        "%s sample invoices created and ready for manual approval "
+        "in the Alma sandbox UI",
+        invoices_created,
+    )
 
 
 @main.command()

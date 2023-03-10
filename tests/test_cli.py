@@ -1,11 +1,27 @@
 import json
 
+import pytest
+
 from sapinvoices.cli import main
 
 
-def test_create_sandbox_sap_data_(runner):
+@pytest.mark.usefixtures("mocked_alma_sample_data")
+def test_create_sandbox_data(caplog, runner):
     result = runner.invoke(main, ["create-sandbox-data"])
     assert result.exit_code == 0
+    assert (
+        "4 sample invoices created and ready for manual approval in the Alma sandbox UI"
+    ) in caplog.text
+
+
+@pytest.mark.usefixtures("mocked_alma_sample_data")
+def test_create_sandbox_data_not_in_prod(monkeypatch, caplog, runner):
+    monkeypatch.setenv("WORKSPACE", "prod")
+    result = runner.invoke(main, ["create-sandbox-data"])
+    assert result.exit_code == 1
+    assert (
+        "This command may not be run in the production environment, aborting"
+    ) in caplog.text
 
 
 def test_sap_invoices_review_run(caplog, runner):

@@ -8,6 +8,7 @@ import requests_mock
 from click.testing import CliRunner
 from fabric.testing.fixtures import sftp as mocked_sftp  # noqa
 from moto import mock_ses, mock_ssm
+from requests import HTTPError, Response
 
 from sapinvoices.alma import AlmaClient
 
@@ -91,6 +92,17 @@ def mocked_alma_no_invoices():
             "https://example.com/acq/invoices?"
             "invoice_workflow_status=Waiting+to+be+Sent&limit=100&offset=0",
             json={"total_record_count": 0},
+        )
+        yield mocker
+
+
+@pytest.fixture()
+def mocked_alma_with_errors():
+    with requests_mock.Mocker() as mocker:
+        response = Response()
+        response._content = b"Error message"  # noqa W0212 Access to a protected member
+        mocker.post(
+            "https://example.com/acq/invoices", exc=HTTPError(response=response)
         )
         yield mocker
 
@@ -180,6 +192,101 @@ def mocked_alma():
             )
 
             yield mocker
+
+
+@pytest.fixture()
+def mocked_alma_sample_data():
+    with requests_mock.Mocker() as mocker:
+        # Get vendor
+        response1 = Response()
+        response1._content = b'{"errorList": {"error": [{"errorCode":"402880"}]}}'  # noqa W0212 Access to a protected member
+        mocker.get(
+            "https://example.com/acq/vendors/TestSAPVendor1",
+            exc=HTTPError(response=response1),
+        )
+        mocker.get(
+            "https://example.com/acq/vendors/TestSAPVendor2-S",
+            json={"code": "TestSAPVendor2-S"},
+        )
+        response2 = Response()
+        response2._content = b'{"errorList": {"error": [{"errorCode":"a-different-error"}]}}'  # noqa W0212 Access to a protected member
+        mocker.get(
+            "https://example.com/acq/vendors/not-a-vendor",
+            exc=HTTPError(response=response2),
+        )
+
+        # Get vendor invoices
+        mocker.get(
+            "https://example.com/acq/vendors/TestSAPVendor1/invoices",
+            json={
+                "total_record_count": 2,
+                "invoice": [
+                    {"id": "alma_id_0001", "number": "TestSAPInvoiceV1-1"},
+                    {"id": "alma_id_0002", "number": "TestSAPInvoiceV1-2"},
+                ],
+            },
+        )
+        mocker.get(
+            "https://example.com/acq/vendors/TestSAPVendor2-S/invoices",
+            json={"total_record_count": 0, "invoice": []},
+        )
+        mocker.get(
+            "https://example.com/acq/vendors/TestSAPVendor3/invoices",
+            json={
+                "total_record_count": 1,
+                "invoice": [{"id": "alma_id_0003", "number": "HasNoDash"}],
+            },
+        )
+
+        # Create vendor
+        mocker.post("https://example.com/acq/vendors", json={"code": "TestSAPVendor1"})
+
+        # Create invoice
+        mocker.post(
+            "https://example.com/acq/invoices",
+            [{"json": {"id": "alma_id_0001"}}, {"json": {"id": "alma_id_0002"}}],
+        )
+
+        # Create invoice lines
+        mocker.post(
+            "https://example.com/acq/invoices/alma_id_0001/lines",
+            json={"id": "alma_id_0001"},
+        )
+        mocker.post(
+            "https://example.com/acq/invoices/alma_id_0002/lines",
+            json={"id": "alma_id_0002"},
+        )
+        response3 = Response()
+        response3._content = b"Error message"  # noqa W0212 Access to a protected member
+        mocker.post(
+            "https://example.com/acq/invoices/error_id/lines",
+            exc=HTTPError(response=response3),
+        )
+
+        # Process invoices
+        mocker.post(
+            "https://example.com/acq/invoices/alma_id_0001?op=process_invoice",
+            json={"id": "alma_id_0001"},
+        )
+        mocker.post(
+            "https://example.com/acq/invoices/alma_id_0002?op=process_invoice",
+            json={"id": "alma_id_0002"},
+        )
+        mocker.post(
+            "https://example.com/acq/invoices/alma_id_0003?op=process_invoice",
+            json={"id": "alma_id_0003"},
+        )
+        mocker.post(
+            "https://example.com/acq/invoices/alma_id_0004?op=process_invoice",
+            json={"id": "alma_id_0004"},
+        )
+        response4 = Response()
+        response4._content = b"Error message"  # noqa W0212 Access to a protected member
+        mocker.post(
+            "https://example.com/acq/invoices/error_id?op=process_invoice",
+            exc=HTTPError(response=response4),
+        )
+        yield mocker
 
 
 @pytest.fixture()
