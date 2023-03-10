@@ -60,15 +60,15 @@ def test_sap_invoices_final_run_real_run(
     caplog,
     monkeypatch,
     runner,
-    mocked_sftp_server,
+    mocked_sftp,  # noqa pylint W0613 Unused argument
     test_sftp_private_key,
 ):
     monkeypatch.setenv(
         "SAP_DROPBOX_CLOUDCONNECTOR_JSON",
         json.dumps(
             {
-                "HOST": mocked_sftp_server.host,
-                "PORT": mocked_sftp_server.port,
+                "HOST": "example.com",
+                "PORT": "8000",
                 "KEY": test_sftp_private_key,
                 "USER": "test-dropbox-user",
             }

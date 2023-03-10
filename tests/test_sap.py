@@ -713,7 +713,7 @@ def test_run_final_real(  # noqa pylint R0913 Too many arguments
     alma_client,
     monkeypatch,
     caplog,
-    sftp,
+    mocked_sftp,  # noqa pylint W0613 Unused argument
     invoices_for_sap,
     test_sftp_private_key,
     problem_invoices,

@@ -694,9 +694,13 @@ def run(  # noqa pylint R0913 Too many arguments
                 user=dropbox_connection["USER"],
                 connect_kwargs={
                     "pkey": pkey,
+                    "look_for_keys": False,
+                    "disabled_algorithms": {
+                        "pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]
+                    },
                 },
-            ) as c:
-                c.put(
+            ) as sftp_connection:
+                sftp_connection.put(
                     BytesIO(bytes(data_file_contents, encoding="utf-8")),
                     f"dropbox/{data_file_name}",
                 )
@@ -705,7 +709,9 @@ def run(  # noqa pylint R0913 Too many arguments
                     data_file_name,
                     sap_config["WORKSPACE"],
                 )
-                c.put(control_file_contents, f"dropbox/{control_file_name}")
+                sftp_connection.put(
+                    control_file_contents, f"dropbox/{control_file_name}"
+                )
                 logger.info(
                     "Sent control file '%s' to SAP dropbox %s",
                     control_file_name,
