@@ -19,7 +19,7 @@ sets trasmitted invoice to paid in Alma
 - `SAP_FINAL_RECIPIENT_EMAIL` = moira list to recieves final run emails
 - `SAP_REVIEW_RECIPIENT_EMAIL` = moira list to recieve review run emails
 - `SES_SEND_FROM_EMAIL` = email address that SES sends from
-- `SSM_PATH` = the path to ssm variables 
+- `SAP_SEQUENCE_NUM` = the SSM path of the current SAP sequence number 
 - `WORKSPACE` = Set to `dev` for local development, this will be set to `stage` and `prod` in those environments by Terraform.
 
 ## Optional ENV

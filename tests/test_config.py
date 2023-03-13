@@ -53,7 +53,7 @@ def test_load_config_values_from_env():
         "SAP_FINAL_RECIPIENT_EMAIL": "final@example.com",
         "SAP_REVIEW_RECIPIENT_EMAIL": "review@example.com",
         "SES_SEND_FROM_EMAIL": "from@example.com",
-        "SSM_PATH": "/test/example/",
+        "SAP_SEQUENCE_NUM": "/test/example/sap_sequence",
         "TIMEOUT": "10",
         "WORKSPACE": "test",
     }
@@ -69,7 +69,7 @@ def test_load_config_values_from_defaults(monkeypatch):
         "SAP_FINAL_RECIPIENT_EMAIL": "final@example.com",
         "SAP_REVIEW_RECIPIENT_EMAIL": "review@example.com",
         "SES_SEND_FROM_EMAIL": "from@example.com",
-        "SSM_PATH": "/test/example/",
+        "SAP_SEQUENCE_NUM": "/test/example/sap_sequence",
         "TIMEOUT": "30",
         "WORKSPACE": "test",
     }

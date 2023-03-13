@@ -575,9 +575,7 @@ def generate_next_sap_sequence_number() -> str:
     """
     ssm = SSM()
     sap_config = load_config_values()
-    sap_sequence_parameter = ssm.get_parameter_value(
-        sap_config["SSM_PATH"] + "SAP_SEQUENCE"
-    )
+    sap_sequence_parameter = ssm.get_parameter_value(sap_config["SAP_SEQUENCE_NUM"])
     split_parameter = sap_sequence_parameter.split(",")
     return str(int(split_parameter[0]) + 1)
 
@@ -591,7 +589,7 @@ def update_sap_sequence(
     date_string = date.strftime("%Y%m%d").ljust(14, "0")
     new_sap_sequence = f"{sap_sequence_number},{date_string},{sequence_type}"
     response = ssm.update_parameter_value(
-        sap_config["SSM_PATH"] + "SAP_SEQUENCE", new_sap_sequence, "StringList"
+        sap_config["SAP_SEQUENCE_NUM"], new_sap_sequence, "StringList"
     )
     return response
 

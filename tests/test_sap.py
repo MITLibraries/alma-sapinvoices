@@ -564,7 +564,7 @@ def test_generate_sap_control(sap_data_file):
 def test_generate_next_sap_sequence_number():
     ssm = SSM()
     assert (
-        ssm.get_parameter_value("/test/example/SAP_SEQUENCE")
+        ssm.get_parameter_value("/test/example/sap_sequence")
         == "1001,20210722000000,ser"
     )
     new_sap_sequence = sap.generate_next_sap_sequence_number()
@@ -574,13 +574,13 @@ def test_generate_next_sap_sequence_number():
 def test_update_sap_sequence():
     ssm = SSM()
     assert (
-        ssm.get_parameter_value("/test/example/SAP_SEQUENCE")
+        ssm.get_parameter_value("/test/example/sap_sequence")
         == "1001,20210722000000,ser"
     )
     response = sap.update_sap_sequence("1002", datetime(2021, 7, 23), "mono")
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
     assert (
-        ssm.get_parameter_value("/test/example/SAP_SEQUENCE")
+        ssm.get_parameter_value("/test/example/sap_sequence")
         == "1002,20210723000000,mono"
     )
 
@@ -745,7 +745,7 @@ def test_run_final_real(  # noqa pylint R0913 Too many arguments
         in caplog.text
     )
     assert (
-        "SSM parameter '/test/example/SAP_SEQUENCE' was updated to "
+        "SSM parameter '/test/example/sap_sequence' was updated to "
         "'0003,20220111000000,mono' with type=StringList" in caplog.text
     )
     assert "3 monograph invoices successfully marked as paid in Alma" in caplog.text

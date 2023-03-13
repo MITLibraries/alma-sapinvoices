@@ -34,7 +34,7 @@ def test_env():
         "SAP_REVIEW_RECIPIENT_EMAIL": "review@example.com",
         "SENTRY_DSN": None,
         "SES_SEND_FROM_EMAIL": "from@example.com",
-        "SSM_PATH": "/test/example/",
+        "SAP_SEQUENCE_NUM": "/test/example/sap_sequence",
         "WORKSPACE": "test",
     }
     yield
@@ -73,7 +73,7 @@ def mocked_ssm():
         ssm = boto3.client("ssm", region_name="us-east-1")
 
         ssm.put_parameter(
-            Name="/test/example/SAP_SEQUENCE",
+            Name="/test/example/sap_sequence",
             Value="1001,20210722000000,ser",
             Type="StringList",
         )
