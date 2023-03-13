@@ -11,7 +11,7 @@ REQUIRED_ENVIRONMENT_VARIABLES = [
     "SAP_FINAL_RECIPIENT_EMAIL",
     "SAP_REVIEW_RECIPIENT_EMAIL",
     "SES_SEND_FROM_EMAIL",
-    "SSM_PATH",
+    "SAP_SEQUENCE_NUM",
     "WORKSPACE",
 ]
 
@@ -54,10 +54,5 @@ def load_config_values() -> dict:
     }
     # add optional settings
     settings["TIMEOUT"] = os.getenv("ALMA_API_TIMEOUT", "30")
-    # SSM safety check
-    if "prod" in settings["SSM_PATH"] and settings["WORKSPACE"] != "prod":
-        raise RuntimeError(
-            "Production SSM_PATH may ONLY be used in the production "
-            "environment. Check your env variables and try again."
-        )
+
     return settings
