@@ -62,7 +62,7 @@ def mocked_ses():
 @pytest.fixture(name="test_sftp_private_key")
 def test_sftp_private_key_fixture():
     with open(
-        "tests/fixtures/sample-ssh-key", "r", encoding="utf-8"
+        "tests/fixtures/sample-ssh-key-base64", "r", encoding="utf-8"
     ) as test_ssh_key_file:
         yield test_ssh_key_file.read()
 

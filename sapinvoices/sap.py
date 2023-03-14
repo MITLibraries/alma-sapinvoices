@@ -1,10 +1,11 @@
 """Module with functions necessary for processing invoices to send to SAP."""
 
+import base64
 import collections
 import json
 import logging
 from datetime import datetime
-from io import BytesIO, StringIO
+from io import StringIO
 from math import fsum
 from typing import Any, List, Literal, Optional, Tuple
 
@@ -685,7 +686,8 @@ def run(  # noqa pylint R0913 Too many arguments
 
         if real_run:
             logger.info("Real run, sending files to SAP dropbox")
-            pkey = RSAKey.from_private_key(StringIO(dropbox_connection["KEY"]))
+            decoded_key = base64.b64decode(dropbox_connection["KEY"]).decode()
+            pkey = RSAKey.from_private_key(StringIO(decoded_key))
             with fabric.Connection(
                 host=dropbox_connection["HOST"],
                 port=dropbox_connection["PORT"],
@@ -699,7 +701,7 @@ def run(  # noqa pylint R0913 Too many arguments
                 },
             ) as sftp_connection:
                 sftp_connection.put(
-                    BytesIO(bytes(data_file_contents, encoding="utf-8")),
+                    StringIO(data_file_contents),
                     f"dropbox/{data_file_name}",
                 )
                 logger.info(
@@ -708,7 +710,8 @@ def run(  # noqa pylint R0913 Too many arguments
                     sap_config["WORKSPACE"],
                 )
                 sftp_connection.put(
-                    control_file_contents, f"dropbox/{control_file_name}"
+                    StringIO(control_file_contents),
+                    f"dropbox/{control_file_name}",
                 )
                 logger.info(
                     "Sent control file '%s' to SAP dropbox %s",
