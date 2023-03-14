@@ -48,12 +48,12 @@ def test_load_config_values_from_env():
     assert load_config_values() == {
         "ALMA_API_URL": "https://example.com",
         "ALMA_API_READ_WRITE_KEY": "just-for-testing",
-        "SAP_DROPBOX_CLOUDCONNECTOR_JSON": "test",
-        "SAP_REPLY_TO_EMAIL": "test",
-        "SAP_FINAL_RECIPIENT_EMAIL": "test",
-        "SAP_REVIEW_RECIPIENT_EMAIL": "test",
-        "SES_SEND_FROM_EMAIL": "test",
-        "SSM_PATH": "test",
+        "SAP_DROPBOX_CLOUDCONNECTOR_JSON": '{"test": "test"}',
+        "SAP_REPLY_TO_EMAIL": "replyto@example.com",
+        "SAP_FINAL_RECIPIENT_EMAIL": "final@example.com",
+        "SAP_REVIEW_RECIPIENT_EMAIL": "review@example.com",
+        "SES_SEND_FROM_EMAIL": "from@example.com",
+        "SAP_SEQUENCE_NUM": "/test/example/sap_sequence",
         "TIMEOUT": "10",
         "WORKSPACE": "test",
     }
@@ -64,12 +64,12 @@ def test_load_config_values_from_defaults(monkeypatch):
     assert load_config_values() == {
         "ALMA_API_URL": "https://example.com",
         "ALMA_API_READ_WRITE_KEY": "just-for-testing",
-        "SAP_DROPBOX_CLOUDCONNECTOR_JSON": "test",
-        "SAP_REPLY_TO_EMAIL": "test",
-        "SAP_FINAL_RECIPIENT_EMAIL": "test",
-        "SAP_REVIEW_RECIPIENT_EMAIL": "test",
-        "SES_SEND_FROM_EMAIL": "test",
-        "SSM_PATH": "test",
+        "SAP_DROPBOX_CLOUDCONNECTOR_JSON": '{"test": "test"}',
+        "SAP_REPLY_TO_EMAIL": "replyto@example.com",
+        "SAP_FINAL_RECIPIENT_EMAIL": "final@example.com",
+        "SAP_REVIEW_RECIPIENT_EMAIL": "review@example.com",
+        "SES_SEND_FROM_EMAIL": "from@example.com",
+        "SAP_SEQUENCE_NUM": "/test/example/sap_sequence",
         "TIMEOUT": "30",
         "WORKSPACE": "test",
     }
@@ -79,52 +79,3 @@ def test_load_config_values_missing_config_raises_error(monkeypatch):
     with pytest.raises(KeyError):
         monkeypatch.delenv("ALMA_API_URL", raising=False)
         load_config_values()
-
-
-def test_load_config_ssm_safety_check_raises_error(monkeypatch):
-    monkeypatch.setenv("WORKSPACE", "whatever")
-    monkeypatch.setenv("SSM_PATH", "/test/example/prod")
-    with pytest.raises(RuntimeError) as error:
-        load_config_values()
-    assert str(error.value) == (
-        "Production SSM_PATH may ONLY be used in the production environment. "
-        "Check your env variables and try again."
-    )
-
-
-def test_load_config_ssm_safety_check_does_not_raise_error_in_prod(monkeypatch):
-    monkeypatch.setenv("WORKSPACE", "prod")
-    monkeypatch.setenv("SSM_PATH", "/test/example/prod")
-
-    assert load_config_values() == {
-        "ALMA_API_URL": "https://example.com",
-        "ALMA_API_READ_WRITE_KEY": "just-for-testing",
-        "SAP_DROPBOX_CLOUDCONNECTOR_JSON": "test",
-        "SAP_REPLY_TO_EMAIL": "test",
-        "SAP_FINAL_RECIPIENT_EMAIL": "test",
-        "SAP_REVIEW_RECIPIENT_EMAIL": "test",
-        "SES_SEND_FROM_EMAIL": "test",
-        "SSM_PATH": "/test/example/prod",
-        "WORKSPACE": "prod",
-        "TIMEOUT": "10",
-    }
-
-
-def test_load_config_ssm_safety_check_does_not_raise_error_with_not_prod_path(
-    monkeypatch,
-):
-    monkeypatch.setenv("WORKSPACE", "prod")
-    monkeypatch.setenv("SSM_PATH", "/test/example/dev")
-
-    assert load_config_values() == {
-        "ALMA_API_URL": "https://example.com",
-        "ALMA_API_READ_WRITE_KEY": "just-for-testing",
-        "SAP_DROPBOX_CLOUDCONNECTOR_JSON": "test",
-        "SAP_REPLY_TO_EMAIL": "test",
-        "SAP_FINAL_RECIPIENT_EMAIL": "test",
-        "SAP_REVIEW_RECIPIENT_EMAIL": "test",
-        "SES_SEND_FROM_EMAIL": "test",
-        "SSM_PATH": "/test/example/dev",
-        "WORKSPACE": "prod",
-        "TIMEOUT": "10",
-    }
