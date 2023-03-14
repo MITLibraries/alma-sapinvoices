@@ -91,8 +91,6 @@ def test_sap_invoices_final_run_real_run(
         ),
     )
     result = runner.invoke(main, ["process-invoices", "--final-run", "--real-run"])
-    print(result.exception)
-    print(result.output)
     assert result.exit_code == 0
     assert "Logger 'root' configured with level=INFO" in caplog.text
     assert (

@@ -33,13 +33,11 @@ there be sample invoices ready to be paid in the Alma sandbox. To simplify this,
 is a CLI command that will create four sample invoices in the sandbox. To do this:
   1. Run `pipenv run sap create-sandbox-data`. You should get a final log message
      saying there are four invoices ready for manual approval in Alma.
-  2. Go to the Alma sandbox UI > Acquisitions module > Review (Invoice) > Unassigned
+  2. Go to the Alma sandbox UI > Acquisitions module > Approve (Invoice) > Unassigned
      tab. There should be four invoices listed whose numbers start with TestSAPInvoice.
-  3. For each of those invoices, click on it and then click "Save and Continue". They
-     will now show up in the Waiting For Approval Invoices queue.
-  4. From that queue, using the three dots to the right of each invoice, choose "Edit"
+  3. For each of those invoices, using the three dots to the right of each invoice, choose "Edit"
      and then click "Approve" in the upper right corner.
-  5. Once the invoices have been approved, they are ready to be paid and will be
+  4. Once the invoices have been approved, they are ready to be paid and will be
      retrieved and processed using the llama sap-invoices CLI command.
 
 Note that sample invoices will remain in the Alma sandbox in the "Waiting to be Sent"
