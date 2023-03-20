@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, call
 import pytest
 
 from sapinvoices import sap
-from sapinvoices.ssm import SSM
 
 
 def test_retrieve_sorted_invoices(alma_client):
@@ -561,26 +560,34 @@ def test_generate_sap_control(sap_data_file):
     assert len(sap_control.encode("utf-8")) == 113
 
 
-def test_generate_next_sap_sequence_number():
-    ssm = SSM()
+def test_generate_next_sap_sequence_number(ssm_client):
     assert (
-        ssm.get_parameter_value("/test/example/sap_sequence")
+        ssm_client.get_parameter_value("/test/example/sap_sequence")
         == "1001,20210722000000,ser"
     )
     new_sap_sequence = sap.generate_next_sap_sequence_number()
     assert new_sap_sequence == "1002"
 
 
-def test_update_sap_sequence():
-    ssm = SSM()
+@pytest.mark.usefixtures("mocked_ssm_bad_sequence_number")
+def test_generate_next_sap_sequence_number_fail(ssm_client):
     assert (
-        ssm.get_parameter_value("/test/example/sap_sequence")
+        ssm_client.get_parameter_value("/test/example/sap_sequence")
+        == "1,20210722000000,ser"
+    )
+    with pytest.raises(sap.SapSequenceError):
+        sap.generate_next_sap_sequence_number()
+
+
+def test_update_sap_sequence(ssm_client):
+    assert (
+        ssm_client.get_parameter_value("/test/example/sap_sequence")
         == "1001,20210722000000,ser"
     )
     response = sap.update_sap_sequence("1002", datetime(2021, 7, 23), "mono")
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
     assert (
-        ssm.get_parameter_value("/test/example/sap_sequence")
+        ssm_client.get_parameter_value("/test/example/sap_sequence")
         == "1002,20210723000000,mono"
     )
 

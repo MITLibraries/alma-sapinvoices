@@ -11,6 +11,7 @@ from moto import mock_ses, mock_ssm
 from requests import HTTPError, Response
 
 from sapinvoices.alma import AlmaClient
+from sapinvoices.ssm import SSM
 
 
 @pytest.fixture(autouse=True)
@@ -51,6 +52,11 @@ def alma_client():
     return AlmaClient()
 
 
+@pytest.fixture()
+def ssm_client() -> SSM:
+    return SSM()
+
+
 @pytest.fixture(autouse=True)
 def mocked_ses():
     with mock_ses():
@@ -81,6 +87,19 @@ def mocked_ssm():
             Name="/test/example/TEST_PARAM",
             Value="abc123",
             Type="SecureString",
+        )
+        yield ssm
+
+
+@pytest.fixture()
+def mocked_ssm_bad_sequence_number():
+    with mock_ssm():
+        ssm = boto3.client("ssm", region_name="us-east-1")
+
+        ssm.put_parameter(
+            Name="/test/example/sap_sequence",
+            Value="1,20210722000000,ser",
+            Type="StringList",
         )
         yield ssm
 
