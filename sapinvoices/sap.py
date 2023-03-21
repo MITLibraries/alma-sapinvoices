@@ -588,7 +588,7 @@ def generate_next_sap_sequence_number() -> str:
     if len(split_parameter[0]) < 3:
         raise SapSequenceError(
             f"Invalid SAP sequence: '{split_parameter[0]}', number must be three or more"
-            "digits."
+            " digits."
         )
     return str(int(split_parameter[0]) + 1)
 
