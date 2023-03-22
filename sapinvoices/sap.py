@@ -48,6 +48,10 @@ class VendorAddressError(Exception):
     """Exception raised when vendor has no addresses."""
 
 
+class SapSequenceError(Exception):
+    """Exception raised when SAP sequence number is less than three digits."""
+
+
 def retrieve_sorted_invoices(alma_client: AlmaClient) -> List:
     """Retrieve sorted invoices from Alma.
 
@@ -573,11 +577,19 @@ def generate_next_sap_sequence_number() -> str:
 
     Get the current SAP sequence parameter from SSM and return only the sequence
     number incremented by 1.
+
+    sequence number must be at least three digits (one or two digit numbers should be
+    stored as zero-padded to three places)
     """
     ssm = SSM()
     sap_config = load_config_values()
     sap_sequence_parameter = ssm.get_parameter_value(sap_config["SAP_SEQUENCE_NUM"])
     split_parameter = sap_sequence_parameter.split(",")
+    if len(split_parameter[0]) < 3:
+        raise SapSequenceError(
+            f"Invalid SAP sequence: '{split_parameter[0]}', number must be three or more"
+            " digits."
+        )
     return str(int(split_parameter[0]) + 1)
 
 
