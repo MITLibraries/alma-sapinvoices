@@ -12,6 +12,7 @@ freezegun = "*"
 requests ="*"
 paramiko = "*"
 fabric = {extras = ["pytest"], version = "*"}
+decorator = "*"
 
 [dev-packages]
 bandit = "*"
@@ -28,7 +29,6 @@ pydocstyle = "*"
 requests-mock = "*"
 types-requests = "*"
 types-paramiko = "*"
-
 
 [requires]
 python_version = "3.11"
