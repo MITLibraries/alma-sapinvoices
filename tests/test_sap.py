@@ -4,6 +4,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, call
 
 import pytest
+import requests
 
 from sapinvoices import sap
 
@@ -645,6 +646,36 @@ def test_mark_invoices_paid_error(alma_client, caplog):
     assert result == 2
     assert (
         "Something went wrong marking invoice '2' paid in Alma, it "
+        "should be investigated manually" in caplog.text
+    )
+
+
+def test_mark_invoices_paid_handles_request_exception(alma_client, caplog):
+    date = datetime(2022, 1, 7)
+    invoices = [
+        {"id": "1", "total amount": "100", "currency": "USD"},
+        {"id": "2", "total amount": "200", "currency": "GBH"},
+        {"id": "3", "total amount": "300", "currency": "GBH"},
+    ]
+    alma_client.mark_invoice_paid = MagicMock(
+        side_effect=[
+            {"payment": {"payment_status": {"value": "PAID"}}},
+            {"payment": {"payment_status": {"value": "PAID"}}},
+            requests.exceptions.RequestException,
+        ]
+    )
+
+    expected_calls = [
+        call("1", date, "100", "USD"),
+        call("2", date, "200", "GBH"),
+        call("3", date, "300", "GBH"),
+    ]
+    result = int()
+    result = sap.mark_invoices_paid(alma_client, invoices, datetime(2022, 1, 7))
+    assert alma_client.mark_invoice_paid.call_args_list == expected_calls
+    assert result == 2
+    assert (
+        "Something went wrong marking invoice '3' paid in Alma, it "
         "should be investigated manually" in caplog.text
     )
 

@@ -1,6 +1,8 @@
 import datetime
 import urllib.parse
 
+import pytest
+import requests.exceptions
 import requests_mock
 
 
@@ -124,6 +126,43 @@ def test_mark_invoice_paid(alma_client):
         assert mocker.last_request.url == test_url
         assert mocker.last_request.method == "POST"
         assert mocker.last_request.json() == test_payload
+
+
+def test_mark_invoice_paid_request_read_timeout(alma_client):
+    test_url = "https://example.com/acq/invoices/558809630001021?op=paid"
+    invoice_id = "558809630001021"
+    payment_date = datetime.datetime(2021, 7, 22)
+    payment_amount = "120"
+    payment_currency = "USD"
+    with requests_mock.Mocker(case_sensitive=True) as mocker:
+        mocker.post(
+            test_url,
+            exc=requests.exceptions.ReadTimeout,
+        )
+        with pytest.raises(requests.exceptions.RequestException):
+            alma_client.mark_invoice_paid(
+                invoice_id,
+                payment_date=payment_date,
+                payment_amount=payment_amount,
+                payment_currency=payment_currency,
+            )
+
+
+def test_mark_invoice_paid_request_status_error(alma_client):
+    test_url = "https://example.com/acq/invoices/558809630001021?op=paid"
+    invoice_id = "558809630001021"
+    payment_date = datetime.datetime(2021, 7, 22)
+    payment_amount = "120"
+    payment_currency = "USD"
+    with requests_mock.Mocker(case_sensitive=True) as mocker:
+        mocker.post(test_url, json={}, status_code=404)
+        with pytest.raises(requests.exceptions.RequestException):
+            alma_client.mark_invoice_paid(
+                invoice_id,
+                payment_date=payment_date,
+                payment_amount=payment_amount,
+                payment_currency=payment_currency,
+            )
 
 
 def test_get_invoices_by_status(alma_client):

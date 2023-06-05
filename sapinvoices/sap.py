@@ -11,6 +11,7 @@ from typing import Any, List, Literal, Optional, Tuple
 
 import fabric
 import flatdict  # type: ignore
+import requests.exceptions
 from paramiko import RSAKey
 
 from sapinvoices.alma import AlmaClient
@@ -630,18 +631,22 @@ def mark_invoices_paid(
         logger.debug("date: %s", date)
         logger.debug("total amount: %s", invoice["total amount"])
         logger.debug("currency: %s", invoice["currency"])
-        response = alma_client.mark_invoice_paid(
-            invoice_id, date, invoice["total amount"], invoice["currency"]
-        )
-        if response["payment"]["payment_status"]["value"] == "PAID":
-            logger.debug("Invoice '%s' marked as paid in Alma", invoice_id)
-            paid_invoice_count += 1
-        else:
+        try:
+            response = alma_client.mark_invoice_paid(
+                invoice_id, date, invoice["total amount"], invoice["currency"]
+            )
+            if response["payment"]["payment_status"]["value"] == "PAID":
+                logger.debug("Invoice '%s' marked as paid in Alma", invoice_id)
+                paid_invoice_count += 1
+            else:
+                raise ValueError
+        except (requests.exceptions.RequestException, ValueError):
             logger.error(
                 "Something went wrong marking invoice '%s' paid in Alma, it "
                 "should be investigated manually",
                 invoice_id,
             )
+
     return paid_invoice_count
 
 
