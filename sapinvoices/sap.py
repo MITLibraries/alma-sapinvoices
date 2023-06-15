@@ -632,18 +632,14 @@ def mark_invoices_paid(
         logger.debug("total amount: %s", invoice["total amount"])
         logger.debug("currency: %s", invoice["currency"])
         try:
-            response = alma_client.mark_invoice_paid(
+            alma_client.mark_invoice_paid(
                 invoice_id, date, invoice["total amount"], invoice["currency"]
             )
-            if response["payment"]["payment_status"]["value"] == "PAID":
-                logger.debug("Invoice '%s' marked as paid in Alma", invoice_id)
-                paid_invoice_count += 1
-            else:
-                raise ValueError
+
+            paid_invoice_count += 1
         except (requests.exceptions.RequestException, ValueError):
             logger.error(
-                "Something went wrong marking invoice '%s' paid in Alma, it "
-                "should be investigated manually",
+                "Something went wrong marking invoice '%s' paid in Alma.",
                 invoice_id,
             )
 

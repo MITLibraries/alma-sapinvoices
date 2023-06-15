@@ -608,17 +608,17 @@ def test_mark_invoices_paid_all_successful(alma_client):
         {"id": "2", "total amount": "200", "currency": "GBH"},
         {"id": "3", "total amount": "300", "currency": "GBH"},
     ]
-    alma_client.mark_invoice_paid = MagicMock(
-        return_value={"payment": {"payment_status": {"value": "PAID"}}}
-    )
+    alma_client.mark_invoice_paid = MagicMock(return_value=None)
     expected_calls = [
         call("1", date, "100", "USD"),
         call("2", date, "200", "GBH"),
         call("3", date, "300", "GBH"),
     ]
-    result = sap.mark_invoices_paid(alma_client, invoices, datetime(2022, 1, 7))
+    paid_invoice_count = sap.mark_invoices_paid(
+        alma_client, invoices, datetime(2022, 1, 7)
+    )
     assert alma_client.mark_invoice_paid.call_args_list == expected_calls
-    assert result == 3
+    assert paid_invoice_count == 3
 
 
 def test_mark_invoices_paid_error(alma_client, caplog):
@@ -631,7 +631,7 @@ def test_mark_invoices_paid_error(alma_client, caplog):
     alma_client.mark_invoice_paid = MagicMock(
         side_effect=[
             {"payment": {"payment_status": {"value": "PAID"}}},
-            {"payment": {"payment_status": {"value": "WRONG"}}},
+            ValueError,
             {"payment": {"payment_status": {"value": "PAID"}}},
         ]
     )
@@ -641,13 +641,13 @@ def test_mark_invoices_paid_error(alma_client, caplog):
         call("2", date, "200", "GBH"),
         call("3", date, "300", "GBH"),
     ]
-    result = sap.mark_invoices_paid(alma_client, invoices, datetime(2022, 1, 7))
-    assert alma_client.mark_invoice_paid.call_args_list == expected_calls
-    assert result == 2
-    assert (
-        "Something went wrong marking invoice '2' paid in Alma, it "
-        "should be investigated manually" in caplog.text
+
+    paid_invoice_count = sap.mark_invoices_paid(
+        alma_client, invoices, datetime(2022, 1, 7)
     )
+    assert alma_client.mark_invoice_paid.call_args_list == expected_calls
+    assert paid_invoice_count == 2
+    assert "Something went wrong marking invoice '2' paid in Alma." in caplog.text
 
 
 def test_mark_invoices_paid_handles_request_exception(alma_client, caplog):
@@ -670,14 +670,12 @@ def test_mark_invoices_paid_handles_request_exception(alma_client, caplog):
         call("2", date, "200", "GBH"),
         call("3", date, "300", "GBH"),
     ]
-    result = int()
-    result = sap.mark_invoices_paid(alma_client, invoices, datetime(2022, 1, 7))
-    assert alma_client.mark_invoice_paid.call_args_list == expected_calls
-    assert result == 2
-    assert (
-        "Something went wrong marking invoice '3' paid in Alma, it "
-        "should be investigated manually" in caplog.text
+    paid_invoice_count = sap.mark_invoices_paid(
+        alma_client, invoices, datetime(2022, 1, 7)
     )
+    assert alma_client.mark_invoice_paid.call_args_list == expected_calls
+    assert paid_invoice_count == 2
+    assert "Something went wrong marking invoice '3' paid in Alma." in caplog.text
 
 
 def test_run_not_final_not_real(
