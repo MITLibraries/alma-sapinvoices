@@ -216,9 +216,7 @@ class AlmaClient:
         )
         result.raise_for_status()
         time.sleep(0.1)
-        if result.json()["payment"]["payment_status"]["value"] == "PAID":
-            return
-        else:
+        if not result.json()["payment"]["payment_status"]["value"] == "PAID":
             raise ValueError
 
     def process_invoice(self, invoice_id: str) -> dict:
