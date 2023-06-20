@@ -196,7 +196,7 @@ class AlmaClient:
         payment_date: datetime,
         payment_amount: str,
         payment_currency: str,
-    ) -> dict:
+    ) -> None:
         """Mark an invoice as paid using the invoice process endpoint."""
         endpoint = f"acq/invoices/{invoice_id}"
         params = {"op": "paid"}
@@ -216,7 +216,8 @@ class AlmaClient:
         )
         result.raise_for_status()
         time.sleep(0.1)
-        return result.json()
+        if not result.json()["payment"]["payment_status"]["value"] == "PAID":
+            raise ValueError
 
     def process_invoice(self, invoice_id: str) -> dict:
         """Move an invoice to in process using the invoice process endpoint."""
