@@ -154,13 +154,23 @@ def test_determine_vendor_payment_address_present():
         "contact_info": {
             "address": [
                 {"address_type": [{"value": "order", "desc": "Order"}]},
-                {"address_type": [{"value": "payment", "desc": "Payment"}]},
+                {
+                    "address_type": [
+                        {"value": "claim", "desc": "Claim"},
+                        {"value": "payment", "desc": "Payment"},
+                    ]
+                },
                 {"address_type": [{"value": "returns", "desc": "Returns"}]},
             ],
         },
     }
     address = sap.determine_vendor_payment_address(vendor_record)
-    assert {"address_type": [{"value": "payment", "desc": "Payment"}]} == address
+    assert {
+        "address_type": [
+            {"value": "claim", "desc": "Claim"},
+            {"value": "payment", "desc": "Payment"},
+        ]
+    } == address
 
 
 def test_determine_vendor_payment_address_not_present():
