@@ -191,7 +191,7 @@ def determine_vendor_payment_address(vendor_record: dict) -> dict:
     """
     try:
         for address in vendor_record["contact_info"]["address"]:
-            if address["address_type"][0]["value"] == "payment":
+            if any("payment" in type.values() for type in address["address_type"]):
                 return address
         return vendor_record["contact_info"]["address"][0]
     except (IndexError, KeyError) as exc:
