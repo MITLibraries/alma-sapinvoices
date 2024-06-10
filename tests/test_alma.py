@@ -1,3 +1,5 @@
+# ruff: noqa: PLR2004
+
 import datetime
 import urllib.parse
 
@@ -98,7 +100,7 @@ def test_get_vendor_invoices(alma_client):
 def test_mark_invoice_paid(alma_client):
     test_url = "https://example.com/acq/invoices/558809630001021?op=paid"
     invoice_id = "558809630001021"
-    payment_date = datetime.datetime(2021, 7, 22)
+    payment_date = datetime.datetime(2021, 7, 22, tzinfo=datetime.UTC)
     payment_amount = "120"
     payment_currency = "USD"
     test_payload = {
@@ -131,7 +133,7 @@ def test_mark_invoice_paid(alma_client):
 def test_mark_invoice_paid_request_read_timeout(alma_client):
     test_url = "https://example.com/acq/invoices/558809630001021?op=paid"
     invoice_id = "558809630001021"
-    payment_date = datetime.datetime(2021, 7, 22)
+    payment_date = datetime.datetime(2021, 7, 22, tzinfo=datetime.UTC)
     payment_amount = "120"
     payment_currency = "USD"
     with requests_mock.Mocker(case_sensitive=True) as mocker:
@@ -151,7 +153,7 @@ def test_mark_invoice_paid_request_read_timeout(alma_client):
 def test_mark_invoice_paid_request_status_error(alma_client):
     test_url = "https://example.com/acq/invoices/558809630001021?op=paid"
     invoice_id = "558809630001021"
-    payment_date = datetime.datetime(2021, 7, 22)
+    payment_date = datetime.datetime(2021, 7, 22, tzinfo=datetime.UTC)
     payment_amount = "120"
     payment_currency = "USD"
     with requests_mock.Mocker(case_sensitive=True) as mocker:
@@ -168,13 +170,13 @@ def test_mark_invoice_paid_request_status_error(alma_client):
 def test_mark_invoice_paid_request_value_error(alma_client):
     test_url = "https://example.com/acq/invoices/558809630001021?op=paid"
     invoice_id = "558809630001021"
-    payment_date = datetime.datetime(2021, 7, 22)
+    payment_date = datetime.datetime(2021, 7, 22, tzinfo=datetime.UTC)
     payment_amount = "120"
     payment_currency = "USD"
     mocked_response = {"payment": {"payment_status": {"value": "FOO"}}}
     with requests_mock.Mocker(case_sensitive=True) as mocker:
         mocker.post(test_url, json=mocked_response)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError):  # noqa: PT011
             alma_client.mark_invoice_paid(
                 invoice_id,
                 payment_date=payment_date,

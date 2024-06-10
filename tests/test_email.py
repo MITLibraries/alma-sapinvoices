@@ -1,3 +1,5 @@
+# ruff: noqa: PLR2004
+
 from email.message import EmailMessage
 
 from sapinvoices.email import Email

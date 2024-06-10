@@ -1,7 +1,7 @@
 """Sample data loader."""
+
 import json
 import logging
-from typing import List
 
 from requests.exceptions import HTTPError
 
@@ -42,8 +42,8 @@ def create_vendor_if_needed(alma_client: AlmaClient, vendor_data: dict) -> str:
             response_vendor_code = alma_client.create_vendor(vendor_data)["code"]
             logger.info("Vendor '%s' created in Alma", response_vendor_code)
         else:
-            logger.error(err.response.text)
-            raise err
+            logger.exception(err.response.text)
+            raise
     return vendor_code
 
 
@@ -64,7 +64,7 @@ def get_next_vendor_invoice_number(alma_client: AlmaClient, vendor_code: str) ->
 
 def create_invoices_with_lines(
     alma_client: AlmaClient,
-    invoices: List[dict],
+    invoices: list[dict],
     vendor_abbreviation: str,
     next_invoice_number: int,
 ) -> list[str]:
@@ -91,12 +91,12 @@ def create_invoice(alma_client: AlmaClient, invoice_data: dict) -> str:
         logger.info("Invoice created with data: %s", json.dumps(response))
         return response["id"]
     except HTTPError as err:
-        logger.error(err.response.text)
-        raise err
+        logger.exception(err.response.text)
+        raise
 
 
 def create_invoice_lines(
-    alma_client: AlmaClient, invoice_alma_id: str, invoice_lines: List[dict]
+    alma_client: AlmaClient, invoice_alma_id: str, invoice_lines: list[dict]
 ) -> int:
     """Create invoice lines for a given invoice in Alma."""
     created_lines = 0
@@ -110,8 +110,8 @@ def create_invoice_lines(
             )
             created_lines += 1
         except HTTPError as err:
-            logger.error(err.response.text)
-            raise err
+            logger.exception(err.response.text)
+            raise
     return created_lines
 
 
@@ -127,6 +127,6 @@ def process_invoices(alma_client: AlmaClient, invoice_alma_ids: list[str]) -> in
             )
             processed += 1
         except HTTPError as err:
-            logger.error(err.response.text)
-            raise err
+            logger.exception(err.response.text)
+            raise
     return processed

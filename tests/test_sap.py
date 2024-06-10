@@ -1,6 +1,8 @@
+# ruff: noqa: PLR2004, FBT003
+
 import collections
+import datetime
 import json
-from datetime import datetime
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -36,7 +38,7 @@ def test_parse_invoice_records(alma_client):
     assert problem_invoices[0]["fund_errors"][0] == "over-encumbered"
     assert problem_invoices[1]["fund_errors"][0] == "over-encumbered"
     assert problem_invoices[1]["multibyte_errors"][0] == {
-        "character": "‑",
+        "character": "‑",  # noqa: RUF001 non-breaking hyphen, not hyphen-minus
         "field": "vendor:address:lines:0",
     }
 
@@ -47,9 +49,7 @@ def test_parse_invoice_with_no_address_vendor(alma_client):
     with open(
         "tests/fixtures/invoice_with_no_vendor_address.json", encoding="utf-8"
     ) as invoice_no_vendor_address_file:
-        invoices_with_no_vendor_address.append(
-            json.load(invoice_no_vendor_address_file)
-        )
+        invoices_with_no_vendor_address.append(json.load(invoice_no_vendor_address_file))
     problem_invoices, parsed_invoices = sap.parse_invoice_records(
         alma_client, invoices_with_no_vendor_address
     )
@@ -62,15 +62,15 @@ def test_contains_multibyte():
     invoice_with_multibyte = {
         "id": {
             "level 2": [
-                "this is a multibyte character ‑",
-                "this is also ‑ a multibyte character",
+                "this is a multibyte character ‑",  # noqa: RUF001
+                "this is also ‑ a multibyte character",  # noqa: RUF001
                 "this is not a multibyte character -",
             ]
         }
     }
     has_multibyte = sap.check_for_multibyte(invoice_with_multibyte)
     assert has_multibyte[0]["field"] == "id:level 2:0"
-    assert has_multibyte[0]["character"] == "‑"
+    assert has_multibyte[0]["character"] == "‑"  # noqa: RUF001
     assert has_multibyte[1]["field"] == "id:level 2:1"
 
 
@@ -89,7 +89,7 @@ def test_extract_invoice_data_all_present():
         invoice_record = json.load(invoice_waiting_to_be_sent_file)
     invoice_data = sap.extract_invoice_data(invoice_record)
     assert invoice_data == {
-        "date": datetime(2021, 9, 27),
+        "date": datetime.datetime(2021, 9, 27, tzinfo=datetime.UTC),
         "id": "00000055555000000",
         "number": "123456",
         "type": "monograph",
@@ -247,19 +247,19 @@ def test_address_lines_from_address_none_present():
 def test_country_code_from_address_code_present():
     address = {"country": {"value": "USA"}}
     code = sap.country_code_from_address(address)
-    assert "US" == code
+    assert code == "US"
 
 
 def test_country_code_from_address_code_not_present():
     address = {"country": {"value": "Not a Country"}}
     code = sap.country_code_from_address(address)
-    assert "US" == code
+    assert code == "US"
 
 
 def test_country_code_from_address_country_not_present():
     address = {}
     code = sap.country_code_from_address(address)
-    assert "US" == code
+    assert code == "US"
 
 
 def test_populate_fund_data_success(alma_client):
@@ -300,13 +300,13 @@ def test_populate_fund_data_fund_error(alma_client):
         retrieved_funds = {}
         with pytest.raises(sap.FundError) as err:
             sap.populate_fund_data(alma_client, invoice_record, retrieved_funds)
-            assert err.value.fund_codes == ["also-over-encumbered", "over-encumbered"]
+        assert err.value.fund_codes == ["also-over-encumbered", "over-encumbered"]
 
 
 def test_generate_report_success():
     invoices = [
         {
-            "date": datetime(2021, 9, 27),
+            "date": datetime.datetime(2021, 9, 27, tzinfo=datetime.UTC),
             "id": "00000055555000000",
             "number": "123456",
             "type": "monograph",
@@ -348,7 +348,7 @@ def test_generate_report_success():
             },
         }
     ]
-    today = datetime(2021, 10, 1)
+    today = datetime.datetime(2021, 10, 1, tzinfo=datetime.UTC)
     report = sap.generate_report(today, invoices)
     assert (
         report
@@ -391,7 +391,11 @@ Payment Method:  ACCOUNTINGDEPARTMENT
 
 def test_generate_sap_report_email_final_run():
     email = sap.generate_sap_report_email(
-        "Summary contents", "Report contents", "mono", datetime(2021, 10, 1), True
+        "Summary contents",
+        "Report contents",
+        "mono",
+        datetime.datetime(2021, 10, 1, tzinfo=datetime.UTC),
+        True,
     )
     assert email["From"] == "from@example.com"
     assert email["To"] == "final@example.com"
@@ -406,7 +410,11 @@ def test_generate_sap_report_email_final_run():
 
 def test_generate_sap_report_email_review_run():
     email = sap.generate_sap_report_email(
-        "Summary contents", "Report contents", "serial", datetime(2021, 10, 1), False
+        "Summary contents",
+        "Report contents",
+        "serial",
+        datetime.datetime(2021, 10, 1, tzinfo=datetime.UTC),
+        False,
     )
     assert email["From"] == "from@example.com"
     assert email["To"] == "review@example.com"
@@ -480,13 +488,13 @@ def test_format_address_po_box_2_lines():
 
 
 def test_generate_sap_data_success(invoices_for_sap, sap_data_file):
-    today = datetime(2021, 5, 18)
+    today = datetime.datetime(2021, 5, 18, tzinfo=datetime.UTC)
     report = sap.generate_sap_data(today, invoices_for_sap)
     assert report == sap_data_file
 
 
 def test_calculate_invoices_total_amount():
-    invoices = [dict(zip(["total amount"], [0.1])) for x in range(100)]
+    invoices = [dict(zip(["total amount"], [0.1], strict=True)) for x in range(100)]
     total_amount = sap.calculate_invoices_total_amount(invoices)
     assert total_amount == 10
 
@@ -520,7 +528,7 @@ No addresses found for vendor: YBP-no-address
 
 Please fix the above before starting a final-run
 
-"""
+"""  # noqa: RUF001
     )
 
 
@@ -595,7 +603,9 @@ def test_update_sap_sequence(ssm_client):
         ssm_client.get_parameter_value("/test/example/sap_sequence")
         == "1001,20210722000000,ser"
     )
-    response = sap.update_sap_sequence("1002", datetime(2021, 7, 23), "mono")
+    response = sap.update_sap_sequence(
+        "1002", datetime.datetime(2021, 7, 23, tzinfo=datetime.UTC), "mono"
+    )
     assert response["ResponseMetadata"]["HTTPStatusCode"] == 200
     assert (
         ssm_client.get_parameter_value("/test/example/sap_sequence")
@@ -605,14 +615,14 @@ def test_update_sap_sequence(ssm_client):
 
 def test_generate_sap_file_names():
     data_file_name, control_file_name = sap.generate_sap_file_names(
-        "1002", datetime(2021, 12, 17)
+        "1002", datetime.datetime(2021, 12, 17, tzinfo=datetime.UTC)
     )
     assert data_file_name == "dlibsapg.1002.20211217000000"
     assert control_file_name == "clibsapg.1002.20211217000000"
 
 
 def test_mark_invoices_paid_all_successful(alma_client):
-    date = datetime(2022, 1, 7)
+    date = datetime.datetime(2022, 1, 7, tzinfo=datetime.UTC)
     invoices = [
         {"id": "1", "total amount": "100", "currency": "USD"},
         {"id": "2", "total amount": "200", "currency": "GBH"},
@@ -625,14 +635,14 @@ def test_mark_invoices_paid_all_successful(alma_client):
         call("3", date, "300", "GBH"),
     ]
     paid_invoice_count = sap.mark_invoices_paid(
-        alma_client, invoices, datetime(2022, 1, 7)
+        alma_client, invoices, datetime.datetime(2022, 1, 7, tzinfo=datetime.UTC)
     )
     assert alma_client.mark_invoice_paid.call_args_list == expected_calls
     assert paid_invoice_count == 3
 
 
 def test_mark_invoices_paid_error(alma_client, caplog):
-    date = datetime(2022, 1, 7)
+    date = datetime.datetime(2022, 1, 7, tzinfo=datetime.UTC)
     invoices = [
         {"id": "1", "total amount": "100", "currency": "USD"},
         {"id": "2", "total amount": "200", "currency": "GBH"},
@@ -653,7 +663,7 @@ def test_mark_invoices_paid_error(alma_client, caplog):
     ]
 
     paid_invoice_count = sap.mark_invoices_paid(
-        alma_client, invoices, datetime(2022, 1, 7)
+        alma_client, invoices, datetime.datetime(2022, 1, 7, tzinfo=datetime.UTC)
     )
     assert alma_client.mark_invoice_paid.call_args_list == expected_calls
     assert paid_invoice_count == 2
@@ -661,7 +671,7 @@ def test_mark_invoices_paid_error(alma_client, caplog):
 
 
 def test_mark_invoices_paid_handles_request_exception(alma_client, caplog):
-    date = datetime(2022, 1, 7)
+    date = datetime.datetime(2022, 1, 7, tzinfo=datetime.UTC)
     invoices = [
         {"id": "1", "total amount": "100", "currency": "USD"},
         {"id": "2", "total amount": "200", "currency": "GBH"},
@@ -681,7 +691,7 @@ def test_mark_invoices_paid_handles_request_exception(alma_client, caplog):
         call("3", date, "300", "GBH"),
     ]
     paid_invoice_count = sap.mark_invoices_paid(
-        alma_client, invoices, datetime(2022, 1, 7)
+        alma_client, invoices, datetime.datetime(2022, 1, 7, tzinfo=datetime.UTC)
     )
     assert alma_client.mark_invoice_paid.call_args_list == expected_calls
     assert paid_invoice_count == 2
@@ -700,7 +710,7 @@ def test_run_not_final_not_real(
         invoices_for_sap_with_different_payment_method,
         "monograph",
         "0003",
-        datetime(2022, 1, 11),
+        datetime.datetime(2022, 1, 11, tzinfo=datetime.UTC),
         final_run=False,
         real_run=False,
     )
@@ -724,7 +734,7 @@ def test_run_not_final_real(
         invoices_for_sap,
         "monograph",
         "0003",
-        datetime(2022, 1, 11),
+        datetime.datetime(2022, 1, 11, tzinfo=datetime.UTC),
         final_run=False,
         real_run=True,
     )
@@ -748,18 +758,18 @@ def test_run_final_not_real(
         invoices_for_sap,
         "monograph",
         "0003",
-        datetime(2022, 1, 11),
+        datetime.datetime(2022, 1, 11, tzinfo=datetime.UTC),
         final_run=True,
         real_run=False,
     )
     assert "Monographs control file contents:" in caplog.text
 
 
-def test_run_final_real(  # noqa pylint R0913 Too many arguments
+def test_run_final_real(
     alma_client,
     monkeypatch,
     caplog,
-    mocked_sftp,  # noqa pylint W0613 Unused argument
+    mocked_sftp,
     invoices_for_sap,
     test_sftp_private_key,
     problem_invoices,
@@ -782,7 +792,7 @@ def test_run_final_real(  # noqa pylint R0913 Too many arguments
         invoices_for_sap,
         "monograph",
         "0003",
-        datetime(2022, 1, 11),
+        datetime.datetime(2022, 1, 11, tzinfo=datetime.UTC),
         final_run=True,
         real_run=True,
     )

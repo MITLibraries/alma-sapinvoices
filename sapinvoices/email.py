@@ -1,6 +1,5 @@
 from email.message import EmailMessage
 from email.policy import EmailPolicy, default
-from typing import List, Optional
 
 import boto3
 
@@ -12,16 +11,16 @@ class Email(EmailMessage):
         """Initialize Email instance."""
         super().__init__(policy)
 
-    def populate(  # noqa pylint R0913 too many arguments
+    def populate(
         self,
         from_address: str,
         to_addresses: str,
         subject: str,
-        attachments: Optional[List[dict]] = None,
-        body: Optional[str] = None,
-        bcc: Optional[str] = None,
-        cc: Optional[str] = None,  # noqa pylint C0103 not snake_case
-        reply_to: Optional[str] = None,
+        attachments: list[dict] | None = None,
+        body: str | None = None,
+        bcc: str | None = None,
+        cc: str | None = None,
+        reply_to: str | None = None,
     ) -> None:
         """Populate Email message with addresses and subject.
 
@@ -68,11 +67,10 @@ class Email(EmailMessage):
             destinations.extend(self["Cc"].split(","))
         if self["Bcc"]:
             destinations.extend(self["Bcc"].split(","))
-        response = ses.send_raw_email(
+        return ses.send_raw_email(
             Source=self["From"],
             Destinations=destinations,
             RawMessage={
                 "Data": self.as_bytes(),
             },
         )
-        return response

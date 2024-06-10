@@ -1,13 +1,14 @@
+# ruff: noqa: PT004, UP015, D205, D209, D403, D415, RET504
+
+import datetime
 import json
-import os
-from datetime import datetime
 
 import boto3
 import pytest
 import requests_mock
 from click.testing import CliRunner
-from fabric.testing.fixtures import sftp as mocked_sftp  # noqa
-from moto import mock_ses, mock_ssm
+from fabric.testing.fixtures import sftp as mocked_sftp  # noqa: F401, used as fixture
+from moto import mock_aws
 from requests import HTTPError, Response
 
 from sapinvoices.alma import AlmaClient
@@ -15,51 +16,48 @@ from sapinvoices.ssm import SSM
 
 
 @pytest.fixture(autouse=True)
-def aws_credentials():
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
+def aws_credentials(monkeypatch):
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    monkeypatch.setenv("AWS_SECURITY_TOKEN", "testing")
+    monkeypatch.setenv("AWS_SESSION_TOKEN", "testing")
 
 
 @pytest.fixture(autouse=True)
-def test_env():
-    os.environ = {
-        "ALMA_API_URL": "https://example.com",
-        "ALMA_API_READ_WRITE_KEY": "just-for-testing",
-        "ALMA_API_TIMEOUT": "10",
-        "LOG_LEVEL": "INFO",
-        "SAP_DROPBOX_CLOUDCONNECTOR_JSON": json.dumps({"test": "test"}),
-        "SAP_REPLY_TO_EMAIL": "replyto@example.com",
-        "SAP_FINAL_RECIPIENT_EMAIL": "final@example.com",
-        "SAP_REVIEW_RECIPIENT_EMAIL": "review@example.com",
-        "SENTRY_DSN": None,
-        "SES_SEND_FROM_EMAIL": "from@example.com",
-        "SAP_SEQUENCE_NUM": "/test/example/sap_sequence",
-        "WORKSPACE": "test",
-    }
-    yield
+def test_env(monkeypatch):
+    monkeypatch.setenv("ALMA_API_URL", "https://example.com")
+    monkeypatch.setenv("ALMA_API_READ_WRITE_KEY", "just-for-testing")
+    monkeypatch.setenv("ALMA_API_TIMEOUT", "10")
+    monkeypatch.setenv("LOG_LEVEL", "INFO")
+    monkeypatch.setenv("SAP_DROPBOX_CLOUDCONNECTOR_JSON", json.dumps({"test": "test"}))
+    monkeypatch.setenv("SAP_REPLY_TO_EMAIL", "replyto@example.com")
+    monkeypatch.setenv("SAP_FINAL_RECIPIENT_EMAIL", "final@example.com")
+    monkeypatch.setenv("SAP_REVIEW_RECIPIENT_EMAIL", "review@example.com")
+    monkeypatch.setenv("SENTRY_DSN", "None")
+    monkeypatch.setenv("SES_SEND_FROM_EMAIL", "from@example.com")
+    monkeypatch.setenv("SAP_SEQUENCE_NUM", "/test/example/sap_sequence")
+    monkeypatch.setenv("WORKSPACE", "test")
 
 
-@pytest.fixture()
+@pytest.fixture
 def runner():
     return CliRunner()
 
 
 # API fixtures
-@pytest.fixture()
+@pytest.fixture
 def alma_client():
     return AlmaClient()
 
 
-@pytest.fixture()
+@pytest.fixture
 def ssm_client() -> SSM:
     return SSM()
 
 
 @pytest.fixture(autouse=True)
 def mocked_ses():
-    with mock_ses():
+    with mock_aws():
         ses = boto3.client("ses", region_name="us-east-1")
         ses.verify_email_identity(EmailAddress="from@example.com")
         yield ses
@@ -75,7 +73,7 @@ def test_sftp_private_key_fixture():
 
 @pytest.fixture(autouse=True)
 def mocked_ssm():
-    with mock_ssm():
+    with mock_aws():
         ssm = boto3.client("ssm", region_name="us-east-1")
 
         ssm.put_parameter(
@@ -91,20 +89,21 @@ def mocked_ssm():
         yield ssm
 
 
-@pytest.fixture()
+@pytest.fixture
 def mocked_ssm_bad_sequence_number():
-    with mock_ssm():
+    with mock_aws():
         ssm = boto3.client("ssm", region_name="us-east-1")
 
         ssm.put_parameter(
             Name="/test/example/sap_sequence",
             Value="1,20210722000000,ser",
             Type="StringList",
+            Overwrite=True,
         )
         yield ssm
 
 
-@pytest.fixture()
+@pytest.fixture
 def mocked_alma_no_invoices():
     with requests_mock.Mocker() as mocker:
         mocker.get(
@@ -115,14 +114,12 @@ def mocked_alma_no_invoices():
         yield mocker
 
 
-@pytest.fixture()
+@pytest.fixture
 def mocked_alma_with_errors():
     with requests_mock.Mocker() as mocker:
         response = Response()
-        response._content = b"Error message"  # noqa W0212 Access to a protected member
-        mocker.post(
-            "https://example.com/acq/invoices", exc=HTTPError(response=response)
-        )
+        response._content = b"Error message"  # noqa: SLF001
+        mocker.post("https://example.com/acq/invoices", exc=HTTPError(response=response))
         yield mocker
 
 
@@ -156,15 +153,11 @@ def mocked_alma():
             json={"payment": {"payment_status": {"desc": "string", "value": "PAID"}}},
         )
 
-        with open(
-            "tests/fixtures/vendor_aaa.json", encoding="utf-8"
-        ) as vendor_aaa_file:
+        with open("tests/fixtures/vendor_aaa.json", encoding="utf-8") as vendor_aaa_file:
             mocker.get(
                 "https://example.com/acq/vendors/AAA", json=json.load(vendor_aaa_file)
             )
-        with open(
-            "tests/fixtures/vendor_vend-s.json", encoding="utf-8"
-        ) as vendor_s_file:
+        with open("tests/fixtures/vendor_vend-s.json", encoding="utf-8") as vendor_s_file:
             mocker.get(
                 "https://example.com/acq/vendors/VEND-S", json=json.load(vendor_s_file)
             )
@@ -213,12 +206,14 @@ def mocked_alma():
             yield mocker
 
 
-@pytest.fixture()
+@pytest.fixture
 def mocked_alma_sample_data():
     with requests_mock.Mocker() as mocker:
         # Get vendor
         response1 = Response()
-        response1._content = b'{"errorList": {"error": [{"errorCode":"402880"}]}}'  # noqa W0212 Access to a protected member
+        response1._content = (  # noqa: SLF001
+            b'{"errorList": {"error": [{"errorCode":"402880"}]}}'
+        )
         mocker.get(
             "https://example.com/acq/vendors/TestSAPVendor1",
             exc=HTTPError(response=response1),
@@ -228,7 +223,9 @@ def mocked_alma_sample_data():
             json={"code": "TestSAPVendor2-S"},
         )
         response2 = Response()
-        response2._content = b'{"errorList": {"error": [{"errorCode":"a-different-error"}]}}'  # noqa W0212 Access to a protected member
+        response2._content = (  # noqa: SLF001
+            b'{"errorList": {"error": [{"errorCode":"a-different-error"}]}}'
+        )
         mocker.get(
             "https://example.com/acq/vendors/not-a-vendor",
             exc=HTTPError(response=response2),
@@ -276,7 +273,7 @@ def mocked_alma_sample_data():
             json={"id": "alma_id_0002"},
         )
         response3 = Response()
-        response3._content = b"Error message"  # noqa W0212 Access to a protected member
+        response3._content = b"Error message"  # noqa: SLF001
         mocker.post(
             "https://example.com/acq/invoices/error_id/lines",
             exc=HTTPError(response=response3),
@@ -300,7 +297,7 @@ def mocked_alma_sample_data():
             json={"id": "alma_id_0004"},
         )
         response4 = Response()
-        response4._content = b"Error message"  # noqa W0212 Access to a protected member
+        response4._content = b"Error message"  # noqa: SLF001
         mocker.post(
             "https://example.com/acq/invoices/error_id?op=process_invoice",
             exc=HTTPError(response=response4),
@@ -308,14 +305,14 @@ def mocked_alma_sample_data():
         yield mocker
 
 
-@pytest.fixture()
+@pytest.fixture
 def invoices_for_sap_with_different_payment_method():
     """a list of invoices which includes an invoice with
     a payment method other than ACCOUNTINGDEPARTMENT which should
     get filtered out when generating summary reports"""
     invoices = [
         {
-            "date": datetime(2021, 5, 12),
+            "date": datetime.datetime(2021, 5, 12, tzinfo=datetime.UTC),
             "id": "0000055555000000",
             "number": "456789",
             "type": "monograph",
@@ -345,7 +342,7 @@ def invoices_for_sap_with_different_payment_method():
             },
         },
         {
-            "date": datetime(2021, 5, 11),
+            "date": datetime.datetime(2021, 5, 11, tzinfo=datetime.UTC),
             "id": "0000055555000002",
             "number": "444555",
             "type": "monograph",
@@ -389,7 +386,7 @@ def invoices_for_sap_with_different_payment_method():
             },
         },
         {
-            "date": datetime(2021, 5, 12),
+            "date": datetime.datetime(2021, 5, 12, tzinfo=datetime.UTC),
             "id": "0000055555000003",
             "number": "12345",
             "type": "monograph",
@@ -421,11 +418,11 @@ def invoices_for_sap_with_different_payment_method():
     return invoices
 
 
-@pytest.fixture()
+@pytest.fixture
 def invoices_for_sap():
     invoices = [
         {
-            "date": datetime(2021, 5, 12),
+            "date": datetime.datetime(2021, 5, 12, tzinfo=datetime.UTC),
             "id": "0000055555000000",
             "number": "456789",
             "type": "monograph",
@@ -455,7 +452,7 @@ def invoices_for_sap():
             },
         },
         {
-            "date": datetime(2021, 5, 11),
+            "date": datetime.datetime(2021, 5, 11, tzinfo=datetime.UTC),
             "id": "0000055555000000",
             "number": "444555",
             "type": "monograph",
@@ -499,7 +496,7 @@ def invoices_for_sap():
             },
         },
         {
-            "date": datetime(2021, 5, 12),
+            "date": datetime.datetime(2021, 5, 12, tzinfo=datetime.UTC),
             "id": "0000055555000000",
             "number": "456789",
             "type": "monograph",
@@ -531,16 +528,19 @@ def invoices_for_sap():
     return invoices
 
 
-@pytest.fixture()
+@pytest.fixture
 def problem_invoices():
     problem_invoice_list = [
         {
             "fund_errors": ["over-encumbered", "also-over-encumbered"],
             "multibyte_errors": [
-                {"field": "vendor:address:lines:0", "character": "‑"},
+                {
+                    "field": "vendor:address:lines:0",
+                    "character": "‑",  # noqa: RUF001
+                },
                 {"field": "vendor:city", "character": "ƒ"},
             ],
-            "date": datetime(2021, 5, 12),
+            "date": datetime.datetime(2021, 5, 12, tzinfo=datetime.UTC),
             "id": "9991",
             "number": "456789",
             "type": "monograph",
@@ -552,7 +552,7 @@ def problem_invoices():
                 "code": "FOOBAR-M",
                 "address": {
                     "lines": [
-                        "12‑3 salad Street",
+                        "12‑3 salad Street",  # noqa: RUF001
                         "Second Floor",
                     ],
                     "city": "San ƒrancisco",
@@ -564,8 +564,13 @@ def problem_invoices():
         },
         {
             "fund_errors": ["also-over-encumbered"],
-            "multibyte_errors": [{"field": "vendor:address:lines:0", "character": "‑"}],
-            "date": datetime(2021, 5, 11),
+            "multibyte_errors": [
+                {
+                    "field": "vendor:address:lines:0",
+                    "character": "‑",  # noqa: RUF001
+                }
+            ],
+            "date": datetime.datetime(2021, 5, 11, tzinfo=datetime.UTC),
             "id": "9992",
             "number": "444555",
             "type": "monograph",
@@ -581,14 +586,14 @@ def problem_invoices():
                     ],
                     "city": "Atlanta",
                     "state or province": "GA",
-                    "postal code": "30384‑7991",
+                    "postal code": "30384‑7991",  # noqa: RUF001
                     "country": "US",
                 },
             },
         },
         {
             "vendor_address_error": "YBP-no-address",
-            "date": datetime(2021, 5, 11),
+            "date": datetime.datetime(2021, 5, 11, tzinfo=datetime.UTC),
             "id": "9993",
             "number": "444666",
             "type": "monograph",
@@ -600,7 +605,7 @@ def problem_invoices():
     return problem_invoice_list
 
 
-@pytest.fixture()
+@pytest.fixture
 def sap_data_file():
     """a string representing a datafile of invoices to send to SAP
 

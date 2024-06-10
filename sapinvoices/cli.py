@@ -1,7 +1,6 @@
 import datetime
 import json
 import logging
-from typing import Optional
 
 import click
 
@@ -17,7 +16,7 @@ logger = logging.getLogger(__name__)
 @click.pass_context
 def main(ctx: click.Context) -> None:
     ctx.ensure_object(dict)
-    ctx.obj["today"] = datetime.datetime.today()
+    ctx.obj["today"] = datetime.datetime.now(tz=datetime.UTC)
 
 
 @main.command()
@@ -28,7 +27,7 @@ def main(ctx: click.Context) -> None:
     help="Case-insensitive Python log level to use, e.g. debug or warning. Defaults to "
     "INFO if not provided or found in ENV.",
 )
-def create_sandbox_data(log_level: Optional[str]) -> None:
+def create_sandbox_data(log_level: str | None) -> None:
     """Create sample data in the Alma sandbox instance.
 
     This command will not run in the production environment, and should never be run with
@@ -41,10 +40,8 @@ def create_sandbox_data(log_level: Optional[str]) -> None:
     logger.info(configure_logger(root_logger, log_level))
     logger.info(configure_sentry())
     if config_values["WORKSPACE"] == "prod":
-        logger.info(
-            "This command may not be run in the production environment, aborting"
-        )
-        raise click.Abort()
+        logger.info("This command may not be run in the production environment, aborting")
+        raise click.Abort
     alma_client = AlmaClient()
     with open(
         "sample-data/sample-sap-invoice-data.json", encoding="utf-8"
@@ -87,8 +84,11 @@ def create_sandbox_data(log_level: Optional[str]) -> None:
     "INFO if not provided or found in ENV.",
 )
 @click.pass_context
-def process_invoices(  # noqa pylintR0914 Too many local variables
-    ctx: click.Context, final_run: bool, real_run: bool, log_level: Optional[str]
+def process_invoices(
+    ctx: click.Context,
+    final_run: bool,  # noqa: FBT001
+    real_run: bool,  # noqa: FBT001
+    log_level: str | None,
 ) -> None:
     """Process invoices for payment via SAP.
 
@@ -124,7 +124,7 @@ def process_invoices(  # noqa pylintR0914 Too many local variables
         logger.info(
             "No invoices waiting to be sent in Alma, aborting SAP invoice process"
         )
-        raise click.Abort()
+        raise click.Abort
     # Parse retrieved invoices and extract data needed for SAP
     problem_invoices, parsed_invoices = sap.parse_invoice_records(
         alma_client, invoice_records
