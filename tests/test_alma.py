@@ -176,7 +176,10 @@ def test_mark_invoice_paid_request_value_error(alma_client):
     mocked_response = {"payment": {"payment_status": {"value": "FOO"}}}
     with requests_mock.Mocker(case_sensitive=True) as mocker:
         mocker.post(test_url, json=mocked_response)
-        with pytest.raises(ValueError):  # noqa: PT011
+        with pytest.raises(
+            ValueError,
+            match=f"Invoice '{invoice_id}' not marked as 'PAID' in Alma.",
+        ):
             alma_client.mark_invoice_paid(
                 invoice_id,
                 payment_date=payment_date,

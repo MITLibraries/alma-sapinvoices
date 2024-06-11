@@ -217,8 +217,9 @@ class AlmaClient:
         )
         result.raise_for_status()
         time.sleep(0.1)
-        if not result.json()["payment"]["payment_status"]["value"] == "PAID":
-            raise ValueError
+        if result.json()["payment"]["payment_status"]["value"] != "PAID":
+            message = f"Invoice '{invoice_id}' not marked as 'PAID' in Alma."
+            raise ValueError(message)
 
     def process_invoice(self, invoice_id: str) -> dict:
         """Move an invoice to in process using the invoice process endpoint."""
