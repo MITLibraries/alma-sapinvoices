@@ -9,8 +9,8 @@ from io import StringIO
 from math import fsum
 from typing import Any, Literal
 
-import fabric  # type: ignore[import-untyped]
-import flatdict  # type: ignore[import-untyped]
+import fabric
+import flatdict
 import requests.exceptions
 from paramiko import RSAKey
 
