@@ -13,7 +13,9 @@ help: # preview Makefile commands
 	@awk 'BEGIN { FS = ":.*#"; print "Usage:  make <target>\n\nTargets:" } \
 /^[-_[:alpha:]]+:.?*#/ { printf "  %-15s%s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-## ---- Dependency commands ---- ##
+#######################
+# Dependency commands
+#######################
 
 install: # Install Python dependencies
 	pipenv install --dev
@@ -23,7 +25,9 @@ update: install # Update Python dependencies
 	pipenv clean
 	pipenv update --dev
 
-## ---- Unit test commands ---- ##
+######################
+# Unit test commands
+######################
 
 test: # Run tests and print a coverage report
 	pipenv run coverage run --source=sapinvoices -m pytest -vv
@@ -32,7 +36,9 @@ test: # Run tests and print a coverage report
 coveralls: test # Write coverage data to an LCOV report
 	pipenv run coverage lcov -o ./coverage/lcov.info
 
-## ---- Code quality and safety commands ---- ##
+####################################
+# Code quality and safety commands
+####################################
 
 lint: black mypy ruff safety # run linters
 
@@ -57,6 +63,9 @@ black-apply: # apply changes with 'black'
 ruff-apply: # resolve 'fixable errors' with 'ruff'
 	pipenv run ruff check --fix .
 
+####################################
+# Docker and Terraform commands
+####################################
 
 ### Terraform-generated Developer Deploy Commands for Dev environment ###
 dist-dev: ## Build docker container (intended for developer-based manual build)
