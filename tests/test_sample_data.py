@@ -1,3 +1,5 @@
+# ruff: noqa: PLR2004
+
 import json
 
 import pytest
@@ -28,8 +30,7 @@ def test_create_vendor_if_needed_vendor_exists(caplog, alma_client):
     result = sd.create_vendor_if_needed(alma_client, {"code": "TestSAPVendor2-S"})
     assert result == "TestSAPVendor2-S"
     assert (
-        "Vendor 'TestSAPVendor2-S' already exists in Alma, not creating it"
-        in caplog.text
+        "Vendor 'TestSAPVendor2-S' already exists in Alma, not creating it" in caplog.text
     )
 
 

@@ -1,8 +1,8 @@
 import json
 import logging
 import time
+from collections.abc import Generator
 from datetime import datetime
-from typing import Generator, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -103,7 +103,7 @@ class AlmaClient:
         self,
         endpoint: str,
         record_type: str,
-        params: Optional[dict] = None,
+        params: dict | None = None,
         limit: int = 100,
         _offset: int = 0,
         _records_retrieved: int = 0,
@@ -140,8 +140,9 @@ class AlmaClient:
         total_record_count = response.json()["total_record_count"]
         records = response.json().get(record_type, [])
         records_retrieved = _records_retrieved + len(records)
-        for record in records:
-            yield record
+
+        yield from records
+
         if records_retrieved < total_record_count:
             yield from self.get_paged(
                 endpoint,
@@ -216,8 +217,9 @@ class AlmaClient:
         )
         result.raise_for_status()
         time.sleep(0.1)
-        if not result.json()["payment"]["payment_status"]["value"] == "PAID":
-            raise ValueError
+        if result.json()["payment"]["payment_status"]["value"] != "PAID":
+            message = f"Invoice '{invoice_id}' not marked as 'PAID' in Alma."
+            raise ValueError(message)
 
     def process_invoice(self, invoice_id: str) -> dict:
         """Move an invoice to in process using the invoice process endpoint."""

@@ -2,15 +2,15 @@
 
 import base64
 import collections
+import datetime
 import json
 import logging
-from datetime import datetime
 from io import StringIO
 from math import fsum
-from typing import Any, List, Literal, Optional, Tuple
+from typing import Any, Literal
 
 import fabric
-import flatdict  # type: ignore
+import flatdict
 import requests.exceptions
 from paramiko import RSAKey
 
@@ -37,7 +37,7 @@ class FundError(Exception):
     def __init__(
         self,
         fund_codes: list,
-        message: str = ("Fund could not be retrieved by " "code, may be overexpended"),
+        message: str = "Fund could not be retrieved by code, may be overexpended",
     ) -> None:
         """Initialize FundError instance."""
         self.fund_codes = fund_codes
@@ -53,7 +53,7 @@ class SapSequenceError(Exception):
     """Exception raised when SAP sequence number is less than three digits."""
 
 
-def retrieve_sorted_invoices(alma_client: AlmaClient) -> List:
+def retrieve_sorted_invoices(alma_client: AlmaClient) -> list:
     """Retrieve sorted invoices from Alma.
 
     Retrieve invoices from Alma with status 'Waiting to be sent' and return them
@@ -64,8 +64,8 @@ def retrieve_sorted_invoices(alma_client: AlmaClient) -> List:
 
 
 def parse_invoice_records(
-    alma_client: AlmaClient, invoice_records: List[dict]
-) -> Tuple[List[dict[Any, Any]], List[dict[Any, Any]]]:
+    alma_client: AlmaClient, invoice_records: list[dict]
+) -> tuple[list[dict[Any, Any]], list[dict[Any, Any]]]:
     """Parse a list of invoice records from Alma and return extracted SAP data."""
     parsed_invoices = []
     problem_invoices = []
@@ -126,7 +126,7 @@ def check_for_multibyte(invoice: dict) -> list:
         if isinstance(value, str):
             for char in value:
                 if len(char.encode("utf-8")) > 1:
-                    multibyte_characters.append(
+                    multibyte_characters.append(  # noqa: PERF401
                         {"field": nested_key, "character": char}
                     )
     return multibyte_characters
@@ -140,8 +140,10 @@ def extract_invoice_data(invoice_record: dict) -> dict:
 
     """
     vendor_code = invoice_record["vendor"]["value"]
-    invoice_data = {
-        "date": datetime.strptime(invoice_record["invoice_date"], "%Y-%m-%dZ"),
+    return {
+        "date": datetime.datetime.strptime(
+            invoice_record["invoice_date"], "%Y-%m-%dZ"
+        ).replace(tzinfo=datetime.UTC),
         "id": invoice_record["id"],
         "number": invoice_record["number"],
         "type": get_purchase_type(vendor_code),
@@ -149,7 +151,6 @@ def extract_invoice_data(invoice_record: dict) -> dict:
         "total amount": invoice_record["total_amount"],
         "currency": invoice_record["currency"]["value"],
     }
-    return invoice_data
 
 
 def get_purchase_type(vendor_code: str) -> str:
@@ -167,7 +168,7 @@ def populate_vendor_data(alma_client: AlmaClient, vendor_code: str) -> dict:
     """
     vendor_record = alma_client.get_vendor_details(vendor_code)
     address = determine_vendor_payment_address(vendor_record)
-    vendor_data = {
+    return {
         "name": vendor_record["name"],
         "code": vendor_code,
         "address": {
@@ -178,7 +179,6 @@ def populate_vendor_data(alma_client: AlmaClient, vendor_code: str) -> dict:
             "country": country_code_from_address(address),
         },
     }
-    return vendor_data
 
 
 def determine_vendor_payment_address(vendor_record: dict) -> dict:
@@ -191,7 +191,10 @@ def determine_vendor_payment_address(vendor_record: dict) -> dict:
     """
     try:
         for address in vendor_record["contact_info"]["address"]:
-            if any("payment" in type.values() for type in address["address_type"]):
+            if any(
+                "payment" in address_type.values()
+                for address_type in address["address_type"]
+            ):
                 return address
         return vendor_record["contact_info"]["address"][0]
     except (IndexError, KeyError) as exc:
@@ -205,12 +208,11 @@ def address_lines_from_address(address: dict) -> list:
     address lines from the address.
     """
     line_names = ["line1", "line2", "line3", "line4", "line5"]
-    lines = [
+    return [
         address.get(line_name)
         for line_name in line_names
         if address.get(line_name) is not None
     ]
-    return lines
 
 
 def country_code_from_address(address: dict) -> str:
@@ -230,7 +232,7 @@ def country_code_from_address(address: dict) -> str:
 
 def populate_fund_data(
     alma_client: AlmaClient, invoice_record: dict, retrieved_funds: dict
-) -> Tuple[dict, dict]:
+) -> tuple[dict, dict]:
     """Populate a dict with fund data needed for SAP.
 
     Given an invoice record, a dict of already retrieved funds, and an authenticated
@@ -276,11 +278,11 @@ def populate_fund_data(
 
 
 def split_invoices_by_field_value(
-    invoices: List[dict],
+    invoices: list[dict],
     field: str,
     first_value: str,
-    second_value: Optional[str] = None,
-) -> Tuple[List[dict[Any, Any]], List[dict[Any, Any]]]:
+    second_value: str | None = None,
+) -> tuple[list[dict[Any, Any]], list[dict[Any, Any]]]:
     """Split a list of parsed invoices into two based on an invoice field's value.
 
     Returns two lists, one of invoice dicts with the first value in the provided
@@ -293,21 +295,19 @@ def split_invoices_by_field_value(
     for invoice in invoices:
         if invoice[field] == first_value:
             invoices_with_first_value.append(invoice)
-        elif second_value is not None and invoice[field] == second_value:
+        elif second_value is not None and invoice[field] == second_value:  # noqa: SIM114
             invoices_with_second_value.append(invoice)
         elif second_value is None:
             invoices_with_second_value.append(invoice)
     return invoices_with_first_value, invoices_with_second_value
 
 
-def generate_report(today: datetime, invoices: List[dict]) -> str:
+def generate_report(today: datetime.datetime, invoices: list[dict]) -> str:
     today_string = today.strftime("%m/%d/%Y")
     report = ""
     for invoice in invoices:
         report += f"\n\n{'':33}MIT LIBRARIES\n\n\n"
-        report += (
-            f"Date: {today_string:<36}Vendor code   : {invoice['vendor']['code']}\n"
-        )
+        report += f"Date: {today_string:<36}Vendor code   : {invoice['vendor']['code']}\n"
         report += f"{'Accounting ID :':>57}\n\n"
         report += f"Vendor:  {invoice['vendor']['name']}\n"
         for line in invoice["vendor"]["address"]["lines"]:
@@ -350,8 +350,8 @@ def generate_sap_report_email(
     summary: str,
     report: str,
     purchase_type: Literal["mono", "serial"],
-    date: datetime,
-    final: bool,
+    date: datetime.datetime,
+    final: bool,  # noqa: FBT001
 ) -> Email:
     sap_config = load_config_values()
     report_email = Email()
@@ -383,7 +383,7 @@ def generate_sap_report_email(
     return report_email
 
 
-def format_address_for_sap(address_lines: List) -> Tuple[str, str, str]:
+def format_address_for_sap(address_lines: list) -> tuple[str, str, str]:
     """Assign payee address information to SAP data file fields."""
     payee_name_line_2 = address_lines[0]
 
@@ -403,7 +403,7 @@ def format_address_for_sap(address_lines: List) -> Tuple[str, str, str]:
     return payee_name_line_2, street_or_po_box_num, payee_name_line_3
 
 
-def generate_sap_data(today: datetime, invoices: List[dict]) -> str:
+def generate_sap_data(today: datetime.datetime, invoices: list[dict]) -> str:
     """Format invoice data for SAP.
 
     Given a list of pre-processed invoices and a date, returns a string of invoice
@@ -481,8 +481,7 @@ def generate_summary_warning(problem_invoices: list) -> str:
         if "fund_errors" in invoice:
             for fund_code in invoice["fund_errors"]:
                 warning += (
-                    f"There was a problem retrieving data\n"
-                    f"for fund: {fund_code}\n\n"
+                    f"There was a problem retrieving data\nfor fund: {fund_code}\n\n"
                 )
         if "multibyte_errors" in invoice:
             for multibyte in invoice["multibyte_errors"]:
@@ -501,7 +500,7 @@ def generate_summary_warning(problem_invoices: list) -> str:
 
 def generate_summary(
     problem_invoices: list,
-    invoices: List[dict],
+    invoices: list[dict],
     data_file_name: str,
     control_file_name: str,
 ) -> str:
@@ -516,9 +515,7 @@ def generate_summary(
     for invoice in invoices:
         if invoice["payment method"] == "ACCOUNTINGDEPARTMENT":
             summary += f"{invoice['vendor']['name']: <39.39}"
-            summary += (
-                f"{invoice['number'] + invoice['date'].strftime('%y%m%d'): <20.20}"
-            )
+            summary += f"{invoice['number'] + invoice['date'].strftime('%y%m%d'): <20.20}"
             summary += f"{invoice['total amount']:.2f}\n"
             sum_of_invoices += float(invoice["total amount"])
             invoice_count += 1
@@ -552,16 +549,16 @@ def generate_sap_control(sap_data_file: str, invoice_total: float) -> str:
 
     # 33-52 credit total
     # we don't send credits to SAP so this will always be 20 0's
-    sap_control_file += "0" * 20
+    sap_control_file += "".zfill(20)
 
     # 53-72 debit total - convert invoice total to string
     # remove decimal to convert dollars to cents
     # and 0-pad to 20 characters
-    sap_control_file += f"{'{:.2f}'.format(invoice_total).replace('.', ''):0>20}"  # noqa pylint C0209 too many arguments
+    sap_control_file += f"{invoice_total:.2f}".replace(".", "").zfill(20)
 
     # 73-92 control 3 summarizing the data file
     # we just repeat the invoice total here
-    sap_control_file += f"{'{:.2f}'.format(invoice_total).replace('.', ''):0>20}"  # noqa pylint C0209 too many arguments
+    sap_control_file += f"{invoice_total:.2f}".replace(".", "").zfill(20)
 
     # 93-112 control 4 summarizing the data file
     # Accounts payable told us to use this string
@@ -586,35 +583,35 @@ def generate_next_sap_sequence_number() -> str:
     sap_config = load_config_values()
     sap_sequence_parameter = ssm.get_parameter_value(sap_config["SAP_SEQUENCE_NUM"])
     split_parameter = sap_sequence_parameter.split(",")
-    if len(split_parameter[0]) < 3:
-        raise SapSequenceError(
-            f"Invalid SAP sequence: '{split_parameter[0]}', number must be three or more"
-            " digits."
+    if len(split_parameter[0]) < 3:  # noqa: PLR2004
+        message = (
+            f"Invalid SAP sequence: '{split_parameter[0]}', "
+            "number must be three or more digits."
         )
+        raise SapSequenceError(message)
     return str(int(split_parameter[0]) + 1)
 
 
 def update_sap_sequence(
-    sap_sequence_number: str, date: datetime, sequence_type: str
+    sap_sequence_number: str, date: datetime.datetime, sequence_type: str
 ) -> dict:
     """Update SAP sequence and post it to SSM Parameter Store."""
     ssm = SSM()
     sap_config = load_config_values()
     date_string = date.strftime("%Y%m%d").ljust(14, "0")
     new_sap_sequence = f"{sap_sequence_number},{date_string},{sequence_type}"
-    response = ssm.update_parameter_value(
+    return ssm.update_parameter_value(
         sap_config["SAP_SEQUENCE_NUM"], new_sap_sequence, "StringList"
     )
-    return response
 
 
-def calculate_invoices_total_amount(invoices: List[dict]) -> float:
-    total_amount = 0.0
-    total_amount = fsum([invoice["total amount"] for invoice in invoices])
-    return total_amount
+def calculate_invoices_total_amount(invoices: list[dict]) -> float:
+    return fsum([invoice["total amount"] for invoice in invoices])
 
 
-def generate_sap_file_names(sequence_number: str, date: datetime) -> Tuple[str, str]:
+def generate_sap_file_names(
+    sequence_number: str, date: datetime.datetime
+) -> tuple[str, str]:
     date_string = date.strftime("%Y%m%d000000")
     data_file_name = f"dlibsapg.{sequence_number}.{date_string}"
     control_file_name = f"clibsapg.{sequence_number}.{date_string}"
@@ -622,7 +619,7 @@ def generate_sap_file_names(sequence_number: str, date: datetime) -> Tuple[str, 
 
 
 def mark_invoices_paid(
-    alma_client: AlmaClient, invoices: List[dict], date: datetime
+    alma_client: AlmaClient, invoices: list[dict], date: datetime.datetime
 ) -> int:
     paid_invoice_count = 0
     for invoice in invoices:
@@ -638,7 +635,7 @@ def mark_invoices_paid(
 
             paid_invoice_count += 1
         except (requests.exceptions.RequestException, ValueError):
-            logger.error(
+            logger.exception(
                 "Something went wrong marking invoice '%s' paid in Alma.",
                 invoice_id,
             )
@@ -646,24 +643,21 @@ def mark_invoices_paid(
     return paid_invoice_count
 
 
-def run(  # noqa pylint R0913 Too many arguments
-    # noqa pylintR0914 Too many local variables
+def run(
     alma_client: AlmaClient,
     problem_invoices: list,
-    invoices: List[dict],
+    invoices: list[dict],
     invoices_type: Literal["monograph", "serial"],
     sap_sequence_number: str,  # Just the sequence number, e.g. "0003"
-    date: datetime,
-    final_run: bool,
-    real_run: bool,
+    date: datetime.datetime,
+    final_run: bool,  # noqa: FBT001
+    real_run: bool,  # noqa: FBT001
 ) -> dict:
     sap_config = load_config_values()
     dropbox_connection = json.loads(sap_config["SAP_DROPBOX_CLOUDCONNECTOR_JSON"])
 
     logger.info("Starting file generation process for run %s", invoices_type)
-    data_file_name, control_file_name = generate_sap_file_names(
-        sap_sequence_number, date
-    )
+    data_file_name, control_file_name = generate_sap_file_names(sap_sequence_number, date)
     logger.info(
         "Generated next SAP file names: %s, %s", data_file_name, control_file_name
     )
@@ -708,9 +702,7 @@ def run(  # noqa pylint R0913 Too many arguments
                 connect_kwargs={
                     "pkey": pkey,
                     "look_for_keys": False,
-                    "disabled_algorithms": {
-                        "pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]
-                    },
+                    "disabled_algorithms": {"pubkeys": ["rsa-sha2-256", "rsa-sha2-512"]},
                 },
             ) as sftp_connection:
                 sftp_connection.put(

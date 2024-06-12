@@ -15,7 +15,6 @@ decorator = "*"
 click = "==8.1.3"
 
 [dev-packages]
-bandit = "*"
 black = "*"
 boto3-stubs = "*"
 coverage = "*"
@@ -23,15 +22,14 @@ coveralls = "*"
 mock-ssh-server = "*"
 moto = "*"
 mypy = "*"
-pylama = {extras = ["all"], version = "*"}
-pytest = "*"
-pydocstyle = "*"
+pre-commit = "*"
 requests-mock = "*"
+ruff = "*"
 types-requests = "*"
 types-paramiko = "*"
 
 [requires]
-python_version = "3.11"
+python_version = "3.12"
 
 [scripts]
 sap = "python -c \"from sapinvoices.cli import main; main()\""

@@ -1,3 +1,5 @@
+# ruff: noqa: PLR2004
+
 import logging
 
 import pytest
@@ -7,7 +9,7 @@ from sapinvoices.config import configure_logger, configure_sentry, load_config_v
 
 def test_configure_logger_with_invalid_level_raises_error():
     logger = logging.getLogger(__name__)
-    with pytest.raises(ValueError) as error:
+    with pytest.raises(ValueError) as error:  # noqa: PT011
         configure_logger(logger, log_level_string="oops")
     assert "'oops' is not a valid Python logging level" in str(error)
 
@@ -76,6 +78,6 @@ def test_load_config_values_from_defaults(monkeypatch):
 
 
 def test_load_config_values_missing_config_raises_error(monkeypatch):
+    monkeypatch.delenv("ALMA_API_URL", raising=False)
     with pytest.raises(KeyError):
-        monkeypatch.delenv("ALMA_API_URL", raising=False)
         load_config_values()

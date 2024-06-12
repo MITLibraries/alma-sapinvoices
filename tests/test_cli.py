@@ -28,18 +28,14 @@ def test_sap_invoices_review_run(caplog, runner):
     result = runner.invoke(main, ["process-invoices"])
 
     assert "Logger 'root' configured with level=INFO" in caplog.text
-    assert (
-        "alma-sapinvoices config settings loaded for environment: test" in caplog.text
-    )
+    assert "alma-sapinvoices config settings loaded for environment: test" in caplog.text
     assert "Starting SAP invoices process with options" in caplog.text
     assert "Final run: False" in caplog.text
     assert "Real run: False" in caplog.text
     assert result.exit_code == 0
 
 
-def test_sap_invoices_review_run_no_invoices(
-    caplog, runner, mocked_alma_no_invoices  # noqa pylint W0613 Unused argument
-):
+def test_sap_invoices_review_run_no_invoices(caplog, runner, mocked_alma_no_invoices):
     result = runner.invoke(main, ["process-invoices"])
     assert result.exit_code == 1
     assert "Real run: False" in caplog.text
@@ -52,9 +48,7 @@ def test_sap_invoices_review_run_real_run(caplog, runner):
     result = runner.invoke(main, ["process-invoices", "--real-run"])
     assert result.exit_code == 0
     assert "Logger 'root' configured with level=INFO" in caplog.text
-    assert (
-        "alma-sapinvoices config settings loaded for environment: test" in caplog.text
-    )
+    assert "alma-sapinvoices config settings loaded for environment: test" in caplog.text
     assert "Starting SAP invoices process with options" in caplog.text
     assert "Final run: False" in caplog.text
     assert "Real run: True" in caplog.text
@@ -64,9 +58,7 @@ def test_sap_invoices_final_run(caplog, runner):
     result = runner.invoke(main, ["process-invoices", "--final-run"])
     assert result.exit_code == 0
     assert "Logger 'root' configured with level=INFO" in caplog.text
-    assert (
-        "alma-sapinvoices config settings loaded for environment: test" in caplog.text
-    )
+    assert "alma-sapinvoices config settings loaded for environment: test" in caplog.text
     assert "Starting SAP invoices process with options" in caplog.text
     assert "Final run: True" in caplog.text
     assert "Real run: False" in caplog.text
@@ -76,7 +68,7 @@ def test_sap_invoices_final_run_real_run(
     caplog,
     monkeypatch,
     runner,
-    mocked_sftp,  # noqa pylint W0613 Unused argument
+    mocked_sftp,
     test_sftp_private_key,
 ):
     monkeypatch.setenv(
@@ -93,9 +85,7 @@ def test_sap_invoices_final_run_real_run(
     result = runner.invoke(main, ["process-invoices", "--final-run", "--real-run"])
     assert result.exit_code == 0
     assert "Logger 'root' configured with level=INFO" in caplog.text
-    assert (
-        "alma-sapinvoices config settings loaded for environment: test" in caplog.text
-    )
+    assert "alma-sapinvoices config settings loaded for environment: test" in caplog.text
     assert "Starting SAP invoices process with options" in caplog.text
     assert "Final run: True" in caplog.text
     assert "Real run: True" in caplog.text

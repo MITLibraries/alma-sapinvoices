@@ -29,16 +29,14 @@ class SSM:
         response = self.client.get_parameter_history(
             Name=parameter_key, WithDecryption=True
         )
-        parameter_history = response["Parameters"]
-        return parameter_history
+        return response["Parameters"]
 
     def get_parameter_value(self, parameter_key: str) -> str:
         """Get parameter value based on the specified key."""
         parameter_object = self.client.get_parameter(
             Name=parameter_key, WithDecryption=True
         )
-        parameter_value = parameter_object["Parameter"]["Value"]
-        return parameter_value
+        return parameter_object["Parameter"]["Value"]
 
     def update_parameter_value(
         self, parameter_key: str, new_value: str, parameter_type: str
