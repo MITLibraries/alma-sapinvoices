@@ -27,6 +27,7 @@ requests-mock = "*"
 ruff = "*"
 types-requests = "*"
 types-paramiko = "*"
+pip-audit = "*"
 
 [requires]
 python_version = "3.12"

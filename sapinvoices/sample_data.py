@@ -57,8 +57,7 @@ def get_next_vendor_invoice_number(alma_client: AlmaClient, vendor_code: str) ->
         except ValueError:
             continue
         number = int(invoice_number[number_index:])
-        if number > latest_number:
-            latest_number = number
+        latest_number = max(latest_number, number)
     return latest_number + 1
 
 
