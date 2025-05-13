@@ -125,7 +125,7 @@ def test_populate_vendor_data(alma_client):
         )
     vendor_data = sap.populate_vendor_data(alma_client, "BKHS")
     alma_client.get_vendor_details.assert_called_with("BKHS")
-    assert {
+    assert vendor_data == {
         "name": "The Bookhouse, Inc.",
         "code": "BKHS",
         "address": {
@@ -135,7 +135,7 @@ def test_populate_vendor_data(alma_client):
             "postal code": "string",
             "country": "VU",
         },
-    } == vendor_data
+    }
 
 
 def test_populate_vendor_data_empty_address_list(alma_client):
@@ -165,12 +165,12 @@ def test_determine_vendor_payment_address_present():
         },
     }
     address = sap.determine_vendor_payment_address(vendor_record)
-    assert {
+    assert address == {
         "address_type": [
             {"value": "claim", "desc": "Claim"},
             {"value": "payment", "desc": "Payment"},
         ]
-    } == address
+    }
 
 
 def test_determine_vendor_payment_address_not_present():
@@ -183,7 +183,7 @@ def test_determine_vendor_payment_address_not_present():
         },
     }
     address = sap.determine_vendor_payment_address(vendor_record)
-    assert {"address_type": [{"value": "order", "desc": "Order"}]} == address
+    assert address == {"address_type": [{"value": "order", "desc": "Order"}]}
 
 
 def test_no_address_field_in_vendor_data_raises_error():
@@ -207,13 +207,13 @@ def test_address_lines_from_address_all_present():
         "line5": "Line 5 data",
     }
     lines = sap.address_lines_from_address(address)
-    assert [
+    assert lines == [
         "Line 1 data",
         "Line 2 data",
         "Line 3 data",
         "Line 4 data",
         "Line 5 data",
-    ] == lines
+    ]
 
 
 def test_address_lines_from_address_some_present():
@@ -223,7 +223,7 @@ def test_address_lines_from_address_some_present():
         "line3": "Line 3 data",
     }
     lines = sap.address_lines_from_address(address)
-    assert ["Line 1 data", "Line 2 data", "Line 3 data"] == lines
+    assert lines == ["Line 1 data", "Line 2 data", "Line 3 data"]
 
 
 def test_address_lines_from_address_some_null():
@@ -235,13 +235,13 @@ def test_address_lines_from_address_some_null():
         "line5": None,
     }
     lines = sap.address_lines_from_address(address)
-    assert ["Line 1 data", "Line 2 data", "Line 3 data"] == lines
+    assert lines == ["Line 1 data", "Line 2 data", "Line 3 data"]
 
 
 def test_address_lines_from_address_none_present():
     address = {}
     lines = sap.address_lines_from_address(address)
-    assert [] == lines
+    assert lines == []
 
 
 def test_country_code_from_address_code_present():
