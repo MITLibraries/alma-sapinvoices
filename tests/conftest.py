@@ -1,4 +1,4 @@
-# ruff: noqa: PT004, UP015, D205, D209, D403, D415, RET504
+# ruff: noqa: UP015, D205, D209, D403, D415, RET504
 
 import datetime
 import json
