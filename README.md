@@ -54,13 +54,15 @@ To test end-to-end with a connection to the test SAP Dropbox, the app must be ru
 Running the SAP Invoices process during local development or on staging requires that
 there be sample invoices ready to be paid in the Alma sandbox. To simplify this, there
 is a CLI command that will create four sample invoices in the sandbox. To do this:
-  1. Copy and install AWS CLI credentials for the `SAPInvoicesManagers` role for either the `Dev1` or `Stage-Workloads` AWS account. 
-  2. From corresponding (dev or stage) `sapinvoices` workspace in Terraform Cloud, copy and run the command string output named `aws_cli_run_task_create_sandbox_data`.
-  3. Go to the Alma sandbox UI > Acquisitions module > Approve (Invoice) > Unassigned
+  1. Ensure that the fund used in `sample-data/sample-sap-invoice-data.json` is active and has $$ allocated to in the Alma Sandbox.
+  2. Ensure that you have the `Invoice Manager` role in Alma Sandbox.
+  3. Copy and install AWS CLI credentials for the `SAPInvoicesManagers` role for either the `Dev1` or `Stage-Workloads` AWS account. 
+  4. From corresponding (dev or stage) `sapinvoices` workspace in Terraform Cloud, copy and run the command string output named `aws_cli_run_task_create_sandbox_data`.
+  5. Go to the Alma sandbox UI > Acquisitions module > Approve (Invoice) > Unassigned
      tab. There should be four invoices listed whose numbers start with TestSAPInvoice.
-  4. For each of those invoices, using the three dots to the right of each invoice, choose "Edit"
+  6. For each of those invoices, using the three dots to the right of each invoice, choose "Edit"
      and then click "Approve" in the upper right corner.
-  5. Once the invoices have been approved, they are ready to be paid and can be
+  7. Once the invoices have been approved, they are ready to be paid and can be
      retrieved and processed using the `process-invoices` CLI command.
 
 Note that sample invoices will remain in the Alma sandbox in the "Waiting to be Sent"
