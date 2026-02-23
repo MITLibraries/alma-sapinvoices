@@ -11,6 +11,13 @@ import requests
 from sapinvoices import sap
 
 
+@pytest.fixture
+def full_pipeline_results(alma_client):
+    invoices = sap.retrieve_sorted_invoices(alma_client)
+    problem_invoices, parsed_invoices = sap.parse_invoice_records(alma_client, invoices)
+    return problem_invoices, parsed_invoices
+
+
 def test_retrieve_sorted_invoices(alma_client):
     alma_client.get_invoices_by_status = MagicMock()
     alma_client.get_invoices_by_status.return_value = iter(
@@ -30,32 +37,46 @@ def test_retrieve_sorted_invoices(alma_client):
     assert invoices[2]["number"] == "456"
 
 
-def test_parse_invoice_records(alma_client):
-    invoices = sap.retrieve_sorted_invoices(alma_client)
-    problem_invoices, parsed_invoices = sap.parse_invoice_records(alma_client, invoices)
+def test_parse_invoice_records_returns_expected_counts(full_pipeline_results):
+    problem_invoices, parsed_invoices = full_pipeline_results
     assert len(parsed_invoices) == 3
-    assert len(problem_invoices) == 2
-    assert problem_invoices[0]["fund_errors"][0] == "over-encumbered"
-    assert problem_invoices[1]["fund_errors"][0] == "over-encumbered"
-    assert problem_invoices[1]["multibyte_errors"][0] == {
-        "character": "‑",  # noqa: RUF001 non-breaking hyphen, not hyphen-minus
-        "field": "vendor:address:lines:0",
-    }
+    assert len(problem_invoices) == 3
 
 
-def test_parse_invoice_with_no_address_vendor(alma_client):
-    invoices_with_no_vendor_address = []
-
-    with open(
-        "tests/fixtures/invoice_with_no_vendor_address.json", encoding="utf-8"
-    ) as invoice_no_vendor_address_file:
-        invoices_with_no_vendor_address.append(json.load(invoice_no_vendor_address_file))
-    problem_invoices, parsed_invoices = sap.parse_invoice_records(
-        alma_client, invoices_with_no_vendor_address
+def test_parse_invoice_records_over_encumbered_errors(full_pipeline_results):
+    problem_invoices, _ = full_pipeline_results
+    over_encumbered_count = sum(
+        1 for inv in problem_invoices if "over-encumbered" in inv.get("fund_errors", [])
     )
-    assert len(parsed_invoices) == 0
-    assert len(problem_invoices) == 1
-    assert problem_invoices[0]["vendor_address_error"] == "vendor_no_address"
+    assert over_encumbered_count == 2
+
+
+def test_parse_invoice_records_multibyte_errors(full_pipeline_results):
+    problem_invoices, _ = full_pipeline_results
+    multibyte_errors = [
+        inv["multibyte_errors"] for inv in problem_invoices if inv.get("multibyte_errors")
+    ]
+    assert len(multibyte_errors) == 1
+    assert {
+        "character": "‑",  # noqa: RUF001
+        "field": "vendor:address:lines:0",
+    } in multibyte_errors[0]
+
+
+def test_parse_invoice_records_financial_sys_code_errors(full_pipeline_results):
+    problem_invoices, _ = full_pipeline_results
+    financial_sys_code_errors = [
+        inv["vendor_financial_sys_code_error"]
+        for inv in problem_invoices
+        if inv.get("vendor_financial_sys_code_error")
+    ]
+    assert len(financial_sys_code_errors) == 1
+    assert financial_sys_code_errors[0] == (
+        "Invalid financial system code: INVALID_CODE, for vendor: "
+        "invalid_financial_sys_code.\n"
+        "Financial system code must be 6 digits long and "
+        "contain only numbers."
+    )
 
 
 def test_contains_multibyte():
@@ -80,6 +101,108 @@ def test_does_not_contain_multibyte():
     }
     no_multibyte = sap.check_for_multibyte(invoice_without_multibyte)
     assert len(no_multibyte) == 0
+
+
+def test_parse_single_invoice_success(alma_client):
+    with open("tests/fixtures/invoice_waiting_to_be_sent.json", encoding="utf-8") as f:
+        alma_invoice_record = json.load(f)
+    with open("tests/fixtures/vendor_bkhs.json", encoding="utf-8") as f:
+        alma_client.get_vendor_details = MagicMock(return_value=json.load(f))
+    invoice_data, _, _ = sap.parse_single_invoice(
+        alma_client, alma_invoice_record, {}, {}
+    )
+    assert sap.has_errors(invoice_data) is False
+    assert "vendor" in invoice_data
+    assert "funds" in invoice_data
+
+
+def test_parse_single_invoice_uses_vendor_cache(alma_client):
+    alma_client.get_vendor_details = MagicMock()
+    with open("tests/fixtures/invoice_waiting_to_be_sent.json", encoding="utf-8") as f:
+        invoice_record = json.load(f)
+    vendor_code = invoice_record["vendor"]["value"]
+    cached_vendor = {"name": "Cached Vendor", "code": vendor_code}
+    invoice_data, _, _ = sap.parse_single_invoice(
+        alma_client, invoice_record, {vendor_code: cached_vendor}, {}
+    )
+    alma_client.get_vendor_details.assert_not_called()
+    assert invoice_data["vendor"] == cached_vendor
+
+
+def test_parse_single_invoice_vendor_address_error(alma_client):
+    with open("tests/fixtures/invoice_waiting_to_be_sent.json", encoding="utf-8") as f:
+        invoice_record = json.load(f)
+    with open("tests/fixtures/vendor_no_address.json", encoding="utf-8") as f:
+        alma_client.get_vendor_details = MagicMock(return_value=json.load(f))
+    invoice_data, _, _ = sap.parse_single_invoice(alma_client, invoice_record, {}, {})
+    assert "vendor_address_error" in invoice_data
+    assert sap.has_errors(invoice_data) is True
+
+
+def test_parse_single_invoice_vendor_financial_sys_code_error(alma_client):
+    with open("tests/fixtures/invoice_waiting_to_be_sent.json", encoding="utf-8") as f:
+        invoice_record = json.load(f)
+    with open(
+        "tests/fixtures/vendor_invalid_financial_sys_code.json", encoding="utf-8"
+    ) as f:
+        alma_client.get_vendor_details = MagicMock(return_value=json.load(f))
+    invoice_data, _, _ = sap.parse_single_invoice(alma_client, invoice_record, {}, {})
+    assert "vendor_financial_sys_code_error" in invoice_data
+    assert sap.has_errors(invoice_data) is True
+
+
+def test_parse_single_invoice_fund_error(alma_client):
+    with open("tests/fixtures/invoice_waiting_to_be_sent.json", encoding="utf-8") as f:
+        invoice_record = json.load(f)
+    with open("tests/fixtures/vendor_bkhs.json", encoding="utf-8") as f:
+        alma_client.get_vendor_details = MagicMock(return_value=json.load(f))
+    alma_client.get_fund_by_code = MagicMock(return_value={"total_record_count": 0})
+    invoice_data, _, _ = sap.parse_single_invoice(alma_client, invoice_record, {}, {})
+    assert "fund_errors" in invoice_data
+    assert sap.has_errors(invoice_data) is True
+
+
+def test_parse_single_invoice_populates_vendor_cache(alma_client):
+    with open("tests/fixtures/invoice_waiting_to_be_sent.json", encoding="utf-8") as f:
+        invoice_record = json.load(f)
+    with open("tests/fixtures/vendor_bkhs.json", encoding="utf-8") as f:
+        alma_client.get_vendor_details = MagicMock(return_value=json.load(f))
+    vendor_code = invoice_record["vendor"]["value"]
+    _, updated_vendors, _ = sap.parse_single_invoice(alma_client, invoice_record, {}, {})
+    assert vendor_code in updated_vendors
+
+
+def test_parse_single_invoice_multibyte_error(alma_client):
+    with open("tests/fixtures/invoice_waiting_to_be_sent.json", encoding="utf-8") as f:
+        invoice_record = json.load(f)
+    with open("tests/fixtures/vendor_multibyte-address.json", encoding="utf-8") as f:
+        alma_client.get_vendor_details = MagicMock(return_value=json.load(f))
+    invoice_data, _, _ = sap.parse_single_invoice(alma_client, invoice_record, {}, {})
+    assert "multibyte_errors" in invoice_data
+    assert sap.has_errors(invoice_data) is True
+
+
+def test_has_errors_returns_false_for_clean_invoice():
+    assert sap.has_errors({"fund": "valid fund"}) is False
+
+
+def test_has_errors_returns_true_for_fund_errors():
+    assert sap.has_errors({"fund_errors": ["fund-with-error"]}) is True
+
+
+def test_has_errors_returns_true_for_vendor_address_errors():
+    assert sap.has_errors({"vendor_address_error": "vendor code"}) is True
+
+
+def test_has_errors_returns_true_for_multibyte_errors():
+    assert (
+        sap.has_errors({"multibyte_errors": [{"field": "test", "character": "test"}]})
+        is True
+    )
+
+
+def test_has_errors_returns_true_for_vendor_financial_sys_code_errors():
+    assert sap.has_errors({"vendor_financial_sys_code_error": "error message"}) is True
 
 
 def test_extract_invoice_data_all_present():
@@ -118,16 +241,14 @@ def test_get_purchase_type_monograph():
     assert purchase_type == "monograph"
 
 
-def test_populate_vendor_data(alma_client):
+def test_populate_vendor_data():
     with open("tests/fixtures/vendor_bkhs.json", encoding="utf-8") as vendor_bkhs_file:
-        alma_client.get_vendor_details = MagicMock(
-            return_value=json.load(vendor_bkhs_file)
-        )
-    vendor_data = sap.populate_vendor_data(alma_client, "BKHS")
-    alma_client.get_vendor_details.assert_called_with("BKHS")
+        vendor_data = sap.populate_vendor_data(json.load(vendor_bkhs_file))
     assert vendor_data == {
         "name": "The Bookhouse, Inc.",
         "code": "BKHS",
+        "sap_vendor_account": "123456",
+        "sap_vendor_type_flag": "0000",
         "address": {
             "lines": ["string", "string", "string", "string", "string"],
             "city": "string",
@@ -138,15 +259,11 @@ def test_populate_vendor_data(alma_client):
     }
 
 
-def test_populate_vendor_data_empty_address_list(alma_client):
+def test_populate_vendor_data_empty_address_list_raises_error():
     with open(
         "tests/fixtures/vendor_no_address.json", encoding="utf-8"
-    ) as vendor_no_address_file:
-        alma_client.get_vendor_details = MagicMock(
-            return_value=json.load(vendor_no_address_file)
-        )
-    with pytest.raises(sap.VendorAddressError):
-        sap.populate_vendor_data(alma_client, "vendor_no_address")
+    ) as vendor_no_address_file, pytest.raises(sap.VendorAddressError):
+        sap.populate_vendor_data(json.load(vendor_no_address_file))
 
 
 def test_determine_vendor_payment_address_present():
@@ -520,6 +637,10 @@ Contains multibyte character: ‑
 
 Warning! Invoice: 9993
 No addresses found for vendor: YBP-no-address
+
+Warning! Invoice: 9994
+Invalid financial system code: 12A456, for vendor: vendor_with_invalid_financial_sys_code.
+Financial system code must be 6 digits long and contain only numbers.
 
 Please fix the above before starting a final-run
 

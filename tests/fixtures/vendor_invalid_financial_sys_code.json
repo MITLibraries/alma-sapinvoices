@@ -1,0 +1,25 @@
+{
+  "code": "invalid_financial_sys_code",
+  "name": "Vendor Invalid Financial System Code",
+  "financial_sys_code": "INVALID_CODE",
+  "contact_info": {
+    "address": [
+      {
+        "preferred": false,
+        "line1": "invalid financial sys",
+        "line2": "123 Sesame St.",
+        "city": "Anytown",
+        "state_province": "MA",
+        "postal_code": "12345",
+        "country": {
+          "value": "USA"
+        },
+        "address_type": [
+          {
+            "value": "billing"
+          }
+        ]
+      }
+    ]
+  }
+}

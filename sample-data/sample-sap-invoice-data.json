@@ -4,6 +4,7 @@
     "vendor_data": {
       "code": "TestSAPVendor1",
       "name": "Test SAP Vendor 1",
+      "financial_sys_code": "123456",
       "status": {
         "value": "ACTIVE",
         "desc": "Active"
