@@ -350,9 +350,7 @@ def test_generate_report_success():
     ]
     today = datetime.datetime(2021, 10, 1, tzinfo=datetime.UTC)
     report = sap.generate_report(today, invoices)
-    assert (
-        report
-        == """
+    assert report == """
 
                                  MIT LIBRARIES
 
@@ -386,7 +384,6 @@ Payment Method:  ACCOUNTINGDEPARTMENT
 
 
 \f"""
-    )
 
 
 def test_generate_sap_report_email_final_run():
@@ -501,9 +498,7 @@ def test_calculate_invoices_total_amount():
 
 def test_generate_summary_warning(problem_invoices):
     warning_message = sap.generate_summary_warning(problem_invoices)
-    assert (
-        warning_message
-        == """Warning! Invoice: 9991
+    assert warning_message == """Warning! Invoice: 9991
 There was a problem retrieving data
 for fund: over-encumbered
 
@@ -529,7 +524,6 @@ No addresses found for vendor: YBP-no-address
 Please fix the above before starting a final-run
 
 """  # noqa: RUF001
-    )
 
 
 def test_generate_summary(invoices_for_sap_with_different_payment_method):
@@ -539,9 +533,7 @@ def test_generate_summary(invoices_for_sap_with_different_payment_method):
     summary = sap.generate_summary(
         problem_invoices, invoices_for_sap_with_different_payment_method, dfile, cfile
     )
-    assert (
-        summary
-        == """--- MIT Libraries--- Alma to SAP Invoice Feed
+    assert summary == """--- MIT Libraries--- Alma to SAP Invoice Feed
 
 
 
@@ -564,7 +556,6 @@ Authorized signature __________________________________
 
 BAZ:\t12345\tFoo Bar Books\tFOOBAR
 """
-    )
 
 
 def test_generate_sap_control(sap_data_file):

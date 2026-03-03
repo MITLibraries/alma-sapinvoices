@@ -18,7 +18,7 @@ class SSM:
         self.client = client(
             "ssm",
             region_name="us-east-1",
-            endpoint_url=endpoint_from_env if endpoint_from_env else None,
+            endpoint_url=endpoint_from_env or None,
         )
         logger.info(
             "Initializing SSM client with endpoint: %s", self.client.meta.endpoint_url
