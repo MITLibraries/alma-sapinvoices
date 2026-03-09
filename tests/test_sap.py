@@ -241,9 +241,9 @@ def test_get_purchase_type_monograph():
     assert purchase_type == "monograph"
 
 
-def test_populate_vendor_data():
+def test_parse_vendor_record():
     with open("tests/fixtures/vendor_bkhs.json", encoding="utf-8") as vendor_bkhs_file:
-        vendor_data = sap.populate_vendor_data(json.load(vendor_bkhs_file))
+        vendor_data = sap.parse_vendor_record(json.load(vendor_bkhs_file))
     assert vendor_data == {
         "name": "The Bookhouse, Inc.",
         "code": "BKHS",
@@ -259,11 +259,11 @@ def test_populate_vendor_data():
     }
 
 
-def test_populate_vendor_data_empty_address_list_raises_error():
+def test_parse_vendor_record_empty_address_list_raises_error():
     with open(
         "tests/fixtures/vendor_no_address.json", encoding="utf-8"
     ) as vendor_no_address_file, pytest.raises(sap.VendorAddressError):
-        sap.populate_vendor_data(json.load(vendor_no_address_file))
+        sap.parse_vendor_record(json.load(vendor_no_address_file))
 
 
 def test_determine_vendor_payment_address_present():
@@ -361,13 +361,13 @@ def test_address_lines_from_address_none_present():
     assert lines == []
 
 
-def test_country_code_from_address_code_present():
+def test_country_code_from_address_country_code_in_list():
     address = {"country": {"value": "USA"}}
     code = sap.country_code_from_address(address)
     assert code == "US"
 
 
-def test_country_code_from_address_code_not_present():
+def test_country_code_from_address_country_code_not_in_list():
     address = {"country": {"value": "Not a Country"}}
     code = sap.country_code_from_address(address)
     assert code == "US"
@@ -379,13 +379,13 @@ def test_country_code_from_address_country_not_present():
     assert code == "US"
 
 
-def test_populate_fund_data_success(alma_client):
+def test_get_fund_data_success(alma_client):
     retrieved_funds = {}
     with open(
         "tests/fixtures/invoice_waiting_to_be_sent.json", encoding="utf-8"
     ) as invoice_waiting_to_be_sent_file:
         invoice_record = json.load(invoice_waiting_to_be_sent_file)
-        fund_data, retrieved_funds = sap.populate_fund_data(
+        fund_data, retrieved_funds, fund_errors = sap.get_fund_data(
             alma_client, invoice_record, retrieved_funds
         )
     fund_data_ordereddict = collections.OrderedDict()
@@ -407,17 +407,21 @@ def test_populate_fund_data_success(alma_client):
 
     assert fund_data == fund_data_ordereddict
     assert list(retrieved_funds) == ["JKL", "ABC", "DEF", "GHI"]
+    assert fund_errors is None
 
 
-def test_populate_fund_data_fund_error(alma_client):
+def test_get_fund_data_fund_error(alma_client):
     with open(
         "tests/fixtures/invoice_with_over_encumbrance.json", encoding="utf-8"
     ) as invoice_with_over_encumbrance_file:
         invoice_record = json.load(invoice_with_over_encumbrance_file)
         retrieved_funds = {}
-        with pytest.raises(sap.FundError) as err:
-            sap.populate_fund_data(alma_client, invoice_record, retrieved_funds)
-        assert err.value.fund_codes == ["also-over-encumbered", "over-encumbered"]
+
+    sap_fund_data, _, fund_errors = sap.get_fund_data(
+        alma_client, invoice_record, retrieved_funds
+    )
+    assert sap_fund_data is None
+    assert fund_errors == ["also-over-encumbered", "over-encumbered"]
 
 
 def test_generate_report_success():
