@@ -115,7 +115,10 @@ def generic_alma_fund_record_2():
 def test_parse_invoice_records(alma_client):
     """Test parsing the list of invoices returned from Alma.
 
-    Fixture data contains 6 alma invoice records, 3 of which have errors
+    Uses the mocked alma client to return fixture data from fixture files
+    or directly from the mocked client configuration in conftest.py
+
+    That fixture data contains 6 alma invoice records, 3 of which have errors
     either in the invoice data itself or in the vendor data or fund data.
 
     """
@@ -126,6 +129,7 @@ def test_parse_invoice_records(alma_client):
 
 
 def test_retrieve_sorted_invoices(alma_client):
+    """Test that retrieved invoices are sorted as expected."""
     alma_client.get_invoices_by_status = MagicMock()
     alma_client.get_invoices_by_status.return_value = iter(
         [
@@ -326,10 +330,15 @@ def test_parse_single_invoice_populates_vendor_cache(
 
 
 def test_parse_single_invoice_multibyte_error(
-    alma_client, generic_alma_invoice_record, generic_alma_fund_record_1
+    alma_client,
+    generic_alma_invoice_record,
+    generic_alma_vendor_record,
+    generic_alma_fund_record_1,
 ):
-    with open("tests/fixtures/vendor_multibyte-address.json", encoding="utf-8") as f:
-        alma_client.get_vendor_details = MagicMock(return_value=json.load(f))
+    # introduce a multibyte error
+    generic_alma_invoice_record["number"] = "12345‑"  # noqa: RUF001
+
+    alma_client.get_vendor_details = MagicMock(return_value=generic_alma_vendor_record)
     alma_client.get_fund_by_code = MagicMock(return_value=generic_alma_fund_record_1)
     sap_invoice_data, _, _ = sap.parse_single_invoice(
         alma_client, generic_alma_invoice_record, {}, {}
