@@ -544,13 +544,27 @@ def invoices_for_sap():
 def problem_invoices():
     problem_invoice_list = [
         {
-            "fund_errors": ["over-encumbered", "also-over-encumbered"],
-            "multibyte_errors": [
+            "errors": [
                 {
-                    "field": "vendor:address:lines:0",
-                    "character": "‑",  # noqa: RUF001
+                    "type": "fund_error",
+                    "message": "There was a problem retrieving data\n"
+                    "for fund: over-encumbered",
                 },
-                {"field": "vendor:city", "character": "ƒ"},
+                {
+                    "type": "fund_error",
+                    "message": "There was a problem retrieving data\n"
+                    "for fund: also-over-encumbered",
+                },
+                {
+                    "type": "multibyte_error",
+                    "message": "Invoice field: vendor:address:lines:0\n"
+                    "Contains multibyte character: ‑",  # noqa: RUF001
+                },
+                {
+                    "type": "multibyte_error",
+                    "message": "Invoice field: vendor:city\n"
+                    "Contains multibyte character: ƒ",
+                },
             ],
             "date": datetime.datetime(2021, 5, 12, tzinfo=datetime.UTC),
             "id": "9991",
@@ -575,12 +589,17 @@ def problem_invoices():
             },
         },
         {
-            "fund_errors": ["also-over-encumbered"],
-            "multibyte_errors": [
+            "errors": [
                 {
-                    "field": "vendor:address:lines:0",
-                    "character": "‑",  # noqa: RUF001
-                }
+                    "type": "fund_error",
+                    "message": "There was a problem retrieving data\n"
+                    "for fund: also-over-encumbered",
+                },
+                {
+                    "type": "multibyte_error",
+                    "message": "Invoice field: vendor:address:lines:0\n"
+                    "Contains multibyte character: ‑",  # noqa: RUF001
+                },
             ],
             "date": datetime.datetime(2021, 5, 11, tzinfo=datetime.UTC),
             "id": "9992",
@@ -604,7 +623,12 @@ def problem_invoices():
             },
         },
         {
-            "vendor_address_error": "YBP-no-address",
+            "errors": [
+                {
+                    "type": "vendor_address_error",
+                    "message": "No addresses found for vendor: YBP-no-address",
+                }
+            ],
             "date": datetime.datetime(2021, 5, 11, tzinfo=datetime.UTC),
             "id": "9993",
             "number": "444666",
@@ -614,11 +638,15 @@ def problem_invoices():
             "currency": "USD",
         },
         {
-            "vendor_financial_sys_code_error": (
-                "Invalid financial system code: 12A456, for vendor: "
-                "vendor_with_invalid_financial_sys_code.\n"
-                "Financial system code must be 6 digits long and contain only numbers."
-            ),
+            "errors": [
+                {
+                    "type": "vendor_financial_sys_code_error",
+                    "message": "Invalid financial system code: 12A456, for vendor: "
+                    "vendor_with_invalid_financial_sys_code.\n"
+                    "Financial system code must be 6 digits long "
+                    "and contain only numbers.",
+                }
+            ],
             "date": datetime.datetime(2021, 5, 11, tzinfo=datetime.UTC),
             "id": "9994",
             "number": "444777",

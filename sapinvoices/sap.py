@@ -10,7 +10,6 @@ from math import fsum
 from typing import Any, Literal
 
 import fabric
-import flatdict
 import requests.exceptions
 from paramiko import RSAKey
 
@@ -25,21 +24,46 @@ with open("config/countries.json", encoding="UTF-8") as f:
     COUNTRIES = json.load(f)
 
 
-class VendorAddressError(Exception):
-    """Exception raised when vendor has no addresses."""
+class MultibyteCharacterError(Exception):
+    """Exception raised when an invoice contains multibyte characters."""
 
-
-class VendorFinancialSysCodeError(Exception):
-    """Exception raised when vendor has invalid financial system code."""
-
-    def __init__(self, invalid_code: str, vendor_code: str) -> None:
-        self.invalid_code = invalid_code
-        self.vendor_code = vendor_code
+    def __init__(self, field: str, character: str) -> None:
+        self.field = field
+        self.character = character
         super().__init__(
-            f"Invalid financial system code: {self.invalid_code}, "
-            f"for vendor: {self.vendor_code}.\n"
+            f"Invoice field: {field}\nContains multibyte character: {character}"
+        )
+
+
+class VendorError(Exception):
+    """Exception raised when a vendor record has errors."""
+
+    @classmethod
+    def invalid_financial_sys_code(
+        cls, invalid_financial_sys_code: str, vendor_code: str
+    ) -> "VendorError":
+        return cls(
+            f"Invalid financial system code: {invalid_financial_sys_code}, "
+            f"for vendor: {vendor_code}.\n"
             "Financial system code must be 6 digits long and contain only numbers."
         )
+
+    @classmethod
+    def no_address(cls, vendor_code: str) -> "VendorError":
+        return cls(f"No addresses found for vendor: {vendor_code}")
+
+
+class NoFundReturnedError(Exception):
+    """Exception raised when a fund is not returned by Alma.
+
+    This likely means that the fund is not ready to be used in a PO-line, which could be
+    because the fund is overexpended, overencumbered, or not active for the current fiscal
+    period.
+    """
+
+    def __init__(self, fund_code: str) -> None:
+        self.fund_code = fund_code
+        super().__init__(f"There was a problem retrieving data\nfor fund: {fund_code}")
 
 
 class SapSequenceError(Exception):
@@ -61,9 +85,9 @@ def parse_invoice_records(
 ) -> tuple[list[dict[Any, Any]], list[dict[Any, Any]]]:
     """Orchestrates parsing a list of Alma invoice records.
 
-    Caches vendor and fund data so we only call the alma API for each vendor and fund once
+    Caches vendor and fund data so we only call the alma API once for each vendor or fund
 
-    Separates invoices into those with errors that need review and those
+    Separates invoices into those with errors that need manual review and those
     that can be sent to SAP.
 
     Returns:
@@ -85,7 +109,7 @@ def parse_invoice_records(
         sap_invoice_data, vendor_data_cache, fund_data_cache = parse_single_invoice(
             alma_client, alma_invoice_record, vendor_data_cache, fund_data_cache
         )
-        if has_errors(sap_invoice_data):
+        if sap_invoice_data.get("errors"):
             problem_invoices.append(sap_invoice_data)
         else:
             parsed_invoices.append(sap_invoice_data)
@@ -98,7 +122,7 @@ def parse_single_invoice(
     vendor_data_cache: dict[Any, Any],
     fund_data_cache: dict[Any, Any],
 ) -> tuple[dict[Any, Any], dict[Any, Any], dict[Any, Any]]:
-    """Orchestrates parsing a single invoice record from Alma.
+    """Parses an Alma invoice record, returning the data required by SAP.
 
     Some of the data we send to SAP is available directly in the alma invoice record.
     Vendor and fund data needs to be looked up in additional Alma API Calls.
@@ -143,107 +167,120 @@ def parse_single_invoice(
                 },
                 ... # one entry for each unique fund external ID in the invoice
             },
-            # Optional error fields:
-            # If vendor address is missing/invalid
-            'vendor_address_error': str,
 
-            # If vendor financial sys code is invalid
-            'vendor_financial_sys_code_error': str,
-
-            # List of fund codes with errors
-            'fund_errors': list[str],
-
-            # List of fields/characters with multibyte errors
-            'multibyte_errors': list[dict],
+            errors:[
+                {
+                    'type': str,
+                    'message': str
+                },
+                ... # one entry for each error
+            ]
         }
     """
+    errors: list[VendorError | NoFundReturnedError | MultibyteCharacterError] = []
     sap_invoice_data = extract_invoice_data(alma_invoice_record)
     vendor_code = alma_invoice_record["vendor"]["value"]
 
-    # get parsed vendor data
-    vendor_data, vendor_data_cache, vendor_error = get_vendor_data(
+    # get parsed vendor data and handle any errors raised in the process
+    vendor_data, vendor_data_cache, vendor_errors = get_vendor_data(
         alma_client, vendor_code, vendor_data_cache
     )
-    if vendor_error:
-        sap_invoice_data.update(vendor_error)
+    if vendor_errors:
+        errors.extend(vendor_errors)
     else:
         sap_invoice_data["vendor"] = vendor_data
 
-    # get parsed fund data
-    fund_data, fund_data_cache, fund_errors = get_fund_data(
+    # get parsed fund data and handle any errors raised in the process
+    fund_data, fund_data_cache, fund_errors = get_and_parse_fund_data(
         alma_client, alma_invoice_record, fund_data_cache
     )
     if fund_errors:
-        sap_invoice_data["fund_errors"] = fund_errors
+        errors.extend(fund_errors)
     else:
         sap_invoice_data["funds"] = fund_data
 
+    # check invoice data for multibyte characters
     multibyte_errors = check_for_multibyte(sap_invoice_data)
     if multibyte_errors:
-        sap_invoice_data["multibyte_errors"] = multibyte_errors
+        errors.extend(multibyte_errors)
+
+    if errors:
+        sap_invoice_data["errors"] = errors
 
     return sap_invoice_data, vendor_data_cache, fund_data_cache
-
-
-def has_errors(sap_invoice_data: dict[str, Any]) -> bool:
-    """Check if an invoice has any errors that require manual review."""
-    error_keys = [
-        "vendor_address_error",
-        "multibyte_errors",
-        "fund_errors",
-        "vendor_financial_sys_code_error",
-    ]
-    return any(key in sap_invoice_data for key in error_keys)
 
 
 def get_vendor_data(
     alma_client: AlmaClient,
     vendor_code: str,
     vendor_data_cache: dict,
-) -> tuple[dict | None, dict, dict | None]:
+) -> tuple[dict | None, dict, list[VendorError] | None]:
     """Retrieve parsed vendor data from cache or Alma API.
 
     Returns:
-        SAP vendor data: The parsed vendor data, or None if there was a error.
-        vendor data cache: The (possibly) updated cache of parsed vendor data
-        vendor error: A dict with the error details, or None if retrieval succeeded.
+        The parsed vendor data, or None if there was an error.
+
+        The (possibly) updated cache of parsed vendor data.
+
+        A list of VendorError objects, or None there
+        were no  vendor errors
     """
     if vendor_code not in vendor_data_cache:
-        try:
-            vendor_data_cache[vendor_code] = parse_vendor_record(
-                alma_client.get_vendor_details(vendor_code)
-            )
-        except VendorAddressError:
-            return None, vendor_data_cache, {"vendor_address_error": vendor_code}
-        except VendorFinancialSysCodeError as err:
-            return None, vendor_data_cache, {"vendor_financial_sys_code_error": str(err)}
+        vendor_data, vendor_errors = parse_vendor_record(
+            alma_client.get_vendor_details(vendor_code)
+        )
+        if vendor_errors:
+            return None, vendor_data_cache, vendor_errors
+        vendor_data_cache[vendor_code] = vendor_data
 
     return vendor_data_cache[vendor_code], vendor_data_cache, None
 
 
-def check_for_multibyte(sap_invoice_data: dict) -> list:
-    """Check for the existance of multi-byte characters.
+def check_for_multibyte(
+    data: dict | list | str, path: str = ""
+) -> list[MultibyteCharacterError]:
+    """Check for the existence of multi-byte characters.
 
     Multi-byte characters are those that require more than
     one byte to be represented in UTF-8.
 
     WHY?: SAP system does not support multibyte characters.
-
     """
-    multibyte_characters = []
+    errors: list[MultibyteCharacterError] = []
 
-    for nested_key, value in flatdict.FlatterDict(sap_invoice_data).items():
-        if isinstance(value, str):
-            for char in value:
-                if len(char.encode("utf-8")) > 1:
-                    multibyte_characters.append(  # noqa: PERF401
-                        {"field": nested_key, "character": char}
-                    )
-    return multibyte_characters
+    if isinstance(data, dict):
+        # for each key in the dict, recurse into the value,
+        # building up the path as we go so we can report
+        # the full field name in the error message
+        for key, value in data.items():
+            nested_path = f"{path}: {key}" if path else key
+            errors.extend(check_for_multibyte(value, nested_path))
+
+    elif isinstance(data, list):
+        # for each item in the list, recurse into the item,
+        # adding the index to the path so we can identify
+        # which list element contains the error
+        for i, item in enumerate(data):
+            errors.extend(check_for_multibyte(item, f"{path}: line {i+1}"))
+
+    elif isinstance(data, str):
+        # base case - we've reached a string value, check each
+        # character for multibyte encoding. if we find one,
+        # add an error object to the list of errors.
+        errors.extend(
+            MultibyteCharacterError(path, char)
+            for char in data
+            if len(char.encode("utf-8")) > 1
+        )
+
+    # non-string, non-dict, non-list values (e.g. int, float, datetime)
+    # are ignored since they cannot contain multibyte characters
+
+    return errors
 
 
 def extract_invoice_data(alma_invoice_record: dict) -> dict:
-    """Extract data needed for SAP from Alma invoice record and return as a dict.
+    """Extract data needed for SAP from Alma invoice record.
 
     see https://developers.exlibrisgroup.com/alma/apis/docs/xsd/rest_invoice.xsd/
     for a description of the fields in the Alma invoice record.
@@ -272,84 +309,37 @@ def get_purchase_type(vendor_code: str) -> Literal["serial", "monograph"]:
     return "monograph"
 
 
-def determine_sap_vendor_account(alma_vendor_record: dict) -> tuple[str, str]:
-    """Assign the vendor account code and type flag.
-
-    SAP requires a vendor account number and a vendor type flag for each invoice.
-    SAP has a master file of vendor records which can be referenced via the vendor
-    account number in the datafile we send.
-
-    Libraries Acquisitions staff record the SAP vendor account number in the
-    'financial system code' field in the Alma vendor record as necessary.
-
-    If there is a financial system code in the Alma vendor record,
-    we use that as the SAP vendor account number and we set the vendor type flag to "0000"
-    indicating that this vendor has a master record in SAP.
-
-    If the financial system code is blank, the SAP vendor account number
-    is set to "400000", a one-time vendor account code, and we set the vendor type flag
-    to "X000", indicating a one-time vendor.
-
-    To be valid, the SAP vendor account number must be 6 digits long and contain
-    only numbers.
-
-    Returns:
-        sap vendor account: The account number for the vendor in SAP
-        sap vendor type flag: A flag indicating whether the account number is for a vendor
-            from the master list or a one-time vendor
-
-    Raises:
-        VendorFinancialSysCodeError: if the financial system code in the record is
-            not a valid SAP vendor account code. Note that we just check well formedness
-            of the account code here (length and numeric), but we do not check that
-            the code is actually in use by SAP.
-    """
-    valid_number_of_digits = 6
-    one_time_vendor_account = "400000"
-    vendor_type_flag = {"one_time": "X000", "master": "0000"}
-    sap_vendor = {}
-    sap_vendor["sap_vendor_account"] = (
-        alma_vendor_record.get("financial_sys_code") or one_time_vendor_account
-    )
-    if not (
-        len(sap_vendor["sap_vendor_account"]) == valid_number_of_digits
-        and sap_vendor["sap_vendor_account"].isdigit()
-    ):
-        raise VendorFinancialSysCodeError(
-            invalid_code=sap_vendor["sap_vendor_account"],
-            vendor_code=alma_vendor_record.get("code", ""),
-        )
-    sap_vendor["sap_vendor_type_flag"] = (
-        vendor_type_flag["master"]
-        if alma_vendor_record.get("financial_sys_code")
-        else vendor_type_flag["one_time"]
-    )
-    return sap_vendor["sap_vendor_account"], sap_vendor["sap_vendor_type_flag"]
-
-
-def parse_vendor_record(alma_vendor_record: dict) -> dict:
+def parse_vendor_record(
+    alma_vendor_record: dict,
+) -> tuple[dict | None, list[VendorError] | None]:
     """Parse an Alma vendor record and return required vendor data for SAP.
 
     Returns:
-        A dictionary of vendor data with the following shape:
-    {
-        "name": str,
-        "code": str,
-        "sap_vendor_account": str,
-        "sap_vendor_type_flag": str,
-        "address": {
-            "lines": list[str],
-            "city": str,
-            "state or province": str,
-            "postal code": str,
-            "country": str,
-        }
-    }
+        Parsed vendor data or None if there were any vendor errors
+
+        A list of in vendor data which need manual review or
+        None if there were no errors.
     """
-    address = determine_vendor_payment_address(alma_vendor_record)
-    sap_vendor_account, sap_vendor_type_flag = determine_sap_vendor_account(
-        alma_vendor_record
-    )
+    errors: list[VendorError] = []
+    address = {}
+    sap_vendor_account = ""
+    sap_vendor_type_flag = ""
+
+    try:
+        address = determine_vendor_payment_address(alma_vendor_record)
+    except VendorError as err:
+        errors.append(err)
+
+    try:
+        sap_vendor_account, sap_vendor_type_flag = determine_sap_vendor_account(
+            alma_vendor_record
+        )
+    except VendorError as err:
+        errors.append(err)
+
+    if errors:
+        return None, errors
+
     return {
         "name": alma_vendor_record["name"],
         "code": alma_vendor_record["code"],
@@ -362,10 +352,10 @@ def parse_vendor_record(alma_vendor_record: dict) -> dict:
             "postal code": address.get("postal_code"),
             "country": country_code_from_address(address),
         },
-    }
+    }, None
 
 
-def determine_vendor_payment_address(vendor_record: dict) -> dict:
+def determine_vendor_payment_address(alma_vendor_record: dict) -> dict:
     """Determine payment address from Alma vendor record.
 
     Given an Alma vendor record, determines which of the addresses in the record is
@@ -373,22 +363,22 @@ def determine_vendor_payment_address(vendor_record: dict) -> dict:
     returns the first address in the record.
 
     Returns:
-        vendor address (dict): The vendor address marked as the payment address in the
+        vendor address: The vendor address marked as the payment address in the
             vendor record. Otherwise, the first address in the record.
 
     Raises:
-        VendorAddressError: If the vendor record has no addresses.
+        VendorError: If the vendor record has no addresses.
     """
     try:
-        for address in vendor_record["contact_info"]["address"]:
+        for address in alma_vendor_record["contact_info"]["address"]:
             if any(
                 "payment" in address_type.values()
                 for address_type in address["address_type"]
             ):
                 return address
-        return vendor_record["contact_info"]["address"][0]
+        return alma_vendor_record["contact_info"]["address"][0]
     except (IndexError, KeyError) as exc:
-        raise VendorAddressError from exc
+        raise VendorError.no_address(alma_vendor_record.get("code", "")) from exc
 
 
 def address_lines_from_address(address: dict) -> list:
@@ -420,38 +410,94 @@ def country_code_from_address(address: dict) -> str:
         return "US"
 
 
-def get_fund_data(
+def determine_sap_vendor_account(alma_vendor_record: dict) -> tuple[str, str]:
+    """Assign the vendor account code and type flag.
+
+    SAP requires a vendor account number and a vendor type flag for each invoice.
+    SAP has a master file of vendor records which can be referenced via the vendor
+    account number in the datafile we send.
+
+    Libraries Acquisitions staff record the SAP vendor account number in the
+    'financial system code' field in the Alma vendor record as necessary.
+
+    If there is a financial system code in the Alma vendor record,
+    we use that as the SAP vendor account number and we set the vendor type flag to "0000"
+    indicating that this vendor has a master record in SAP.
+
+    If the financial system code is blank, the SAP vendor account number
+    is set to "400000", a one-time vendor account code in SAP,
+    and we set the vendor type flag to "X000", indicating a one-time vendor.
+
+    To be valid, the SAP vendor account number must be 6 digits long and contain
+    only numbers.
+
+    Returns:
+        sap vendor account: The account number for the vendor in SAP
+        sap vendor type flag: A flag indicating whether the account number is for a vendor
+            from the master list or a one-time vendor
+
+    Raises:
+        VendorError: if the financial system code in the record is
+            not a valid SAP vendor account code. Note that we just check well formedness
+            of the account code here (length and numeric), but we do not check that
+            the code is actually in use by SAP.
+    """
+    valid_number_of_digits = 6
+    one_time_vendor_account = "400000"
+    vendor_type_flag = {"one_time": "X000", "master": "0000"}
+    sap_vendor = {}
+    sap_vendor["sap_vendor_account"] = (
+        alma_vendor_record.get("financial_sys_code") or one_time_vendor_account
+    )
+    # Check that the sap vendor account number is well formed (6 digits, numeric).
+    # if not, raise a VendorError.
+    if not (
+        len(sap_vendor["sap_vendor_account"]) == valid_number_of_digits
+        and sap_vendor["sap_vendor_account"].isdigit()
+    ):
+        raise VendorError.invalid_financial_sys_code(
+            sap_vendor["sap_vendor_account"], alma_vendor_record.get("code", "")
+        )
+
+    sap_vendor["sap_vendor_type_flag"] = (
+        vendor_type_flag["master"]
+        if alma_vendor_record.get("financial_sys_code")
+        else vendor_type_flag["one_time"]
+    )
+    return sap_vendor["sap_vendor_account"], sap_vendor["sap_vendor_type_flag"]
+
+
+def get_and_parse_fund_data(
     alma_client: AlmaClient,
     alma_invoice_record: dict,
     fund_data_cache: dict,
-) -> tuple[dict | None, dict, list | None]:
+) -> tuple[dict | None, dict, list[NoFundReturnedError] | None]:
     """Retrieve and parse fund data for an invoice.
 
     Returns:
-        sap_fund_data: Parsed fund data or None if any fund were not
+        Parsed fund data or None if any fund were not
             retrieved successfully
 
-        updated fund_data_cache: Updated fund records retrieved from Alma
+        Updated fund records retrieved from Alma
 
-        fund_code_errors: sap_fund_data is None and fund_code_errors is a list if any
-            funds could not be retrieved.
-            fund_code_errors is None if all funds
-            were retrieved successfully.
+        A list of errors encountered retrieving fund data or
+            None if no errors were encountered
+
     """
     sap_fund_data: dict[str, Any] = {}
-    fund_code_errors = []
+    errors: list[NoFundReturnedError] = []
 
     invoice_lines = alma_invoice_record["invoice_lines"]["invoice_line"]
     for invoice_line in invoice_lines:
         for fund_distribution in invoice_line["fund_distribution"]:
             fund_code = fund_distribution["fund_code"]["value"]
             amount = fund_distribution["amount"]
-
-            alma_fund_record, fund_data_cache = get_fund_record(
-                alma_client, fund_code, fund_data_cache
-            )
-            if alma_fund_record is None:
-                fund_code_errors.append(fund_code)
+            try:
+                alma_fund_record, fund_data_cache = retrieve_fund_record(
+                    alma_client, fund_code, fund_data_cache
+                )
+            except NoFundReturnedError as err:
+                errors.append(err)
                 continue
 
             external_id = alma_fund_record["fund"][0]["external_id"].strip()
@@ -466,22 +512,32 @@ def get_fund_data(
                     "G/L account": gl_account,
                 }
 
-    if fund_code_errors:
-        return None, fund_data_cache, fund_code_errors
+    if errors:
+        return None, fund_data_cache, errors
 
     return collections.OrderedDict(sorted(sap_fund_data.items())), fund_data_cache, None
 
 
-def get_fund_record(
+def retrieve_fund_record(
     alma_client: AlmaClient,
     fund_code: str,
     fund_data_cache: dict,
-) -> tuple[dict | None, dict]:
+) -> tuple[dict, dict]:
     """Retrieve an Alma fund record from cache or the Alma API.
+
+    The Alma API call we make here will only return a record if the fund is ready to be
+    used for a PO-Line. That is, the fund must be allocated and active
+    in the current fiscal period. This excludes overexpended or overencumbered funds.
+
+    If a fund is not ready to be used in a PO-line the Alma API will return
+    {"total_record_count": 0}
 
     Returns:
         tuple: (alma_fund_record, updated fund_data_cache)
-            alma_fund_record is None if the fund code is unrecognized.
+
+    Raises:
+        FundNotFoundError: If the fund is not returned by the Alma API.
+
     """
     if fund_code in fund_data_cache:
         return fund_data_cache[fund_code], fund_data_cache
@@ -489,8 +545,10 @@ def get_fund_record(
     logger.debug("Retrieving data for fund %s", fund_code)
     alma_fund_record = alma_client.get_fund_by_code(fund_code)
 
+    # If a fund is not ready to be used in a PO-line (see above) the Alma API will return
+    # a total record count of 0
     if alma_fund_record["total_record_count"] == 0:
-        return None, fund_data_cache
+        raise NoFundReturnedError(fund_code)
 
     fund_data_cache[fund_code] = alma_fund_record
     return alma_fund_record, fund_data_cache
@@ -692,31 +750,14 @@ def generate_summary_warning(problem_invoices: list) -> str:
 
     Warns staff about invoice problems that need
     to be resolved before a final-run can take place.
-
     """
-    warning = ""
+    sections = []
     for invoice in problem_invoices:
-        warning += f'Warning! Invoice: {invoice["id"]}\n'
-        if "fund_errors" in invoice:
-            for fund_code in invoice["fund_errors"]:
-                warning += (
-                    f"There was a problem retrieving data\nfor fund: {fund_code}\n\n"
-                )
-        if "multibyte_errors" in invoice:
-            for multibyte in invoice["multibyte_errors"]:
-                warning += (
-                    f'Invoice field: {multibyte["field"]}\n'
-                    f"Contains multibyte "
-                    f'character: {multibyte["character"]}\n\n'
-                )
-        if "vendor_address_error" in invoice:
-            warning += (
-                f'No addresses found for vendor: {invoice["vendor_address_error"]}\n\n'
-            )
-        if "vendor_financial_sys_code_error" in invoice:
-            warning += (invoice["vendor_financial_sys_code_error"]) + "\n\n"
-    warning += "Please fix the above before starting a final-run\n\n"
-    return warning
+        invoice_lines = f'Warning! Invoice: {invoice["id"]}\n'
+        invoice_lines += "\n\n".join(str(error) for error in invoice["errors"])
+        sections.append(invoice_lines)
+    sections.append("Please fix the above before starting a final-run")
+    return "\n\n".join(sections) + "\n\n"
 
 
 def generate_summary(

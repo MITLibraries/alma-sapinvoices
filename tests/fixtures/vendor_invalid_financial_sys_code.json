@@ -1,7 +1,7 @@
 {
   "code": "invalid_financial_sys_code",
   "name": "Vendor Invalid Financial System Code",
-  "financial_sys_code": "INVALID_CODE",
+  "financial_sys_code": "123AB",
   "contact_info": {
     "address": [
       {
