@@ -561,6 +561,31 @@ def test_get_fund_data_fund_error(alma_client, generic_alma_invoice_record):
     assert len(fund_errors) == 2
 
 
+def test_retrieve_fund_record_uses_cache(alma_client):
+    fund_code = "FUND1"
+    cached_fund = {"total_record_count": 1, "fund": [{"external_id": "1234567-000001"}]}
+    fund_data_cache = {fund_code: cached_fund}
+
+    alma_client.get_fund_by_code = MagicMock()
+
+    alma_fund_record, _ = sap.retrieve_fund_record(
+        alma_client, fund_code, fund_data_cache
+    )
+
+    alma_client.get_fund_by_code.assert_not_called()
+    assert alma_fund_record == cached_fund
+
+
+def test_retrieve_fund_record_populates_cache(alma_client, generic_alma_fund_record_1):
+    fund_code = "FUND1"
+    alma_client.get_fund_by_code = MagicMock(return_value=generic_alma_fund_record_1)
+
+    alma_fund_record, updated_cache = sap.retrieve_fund_record(alma_client, fund_code, {})
+
+    assert alma_fund_record == generic_alma_fund_record_1
+    assert fund_code in updated_cache
+
+
 def test_generate_report_success():
     invoices = [
         {
