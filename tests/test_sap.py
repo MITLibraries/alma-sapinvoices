@@ -12,6 +12,24 @@ from sapinvoices import sap
 
 
 @pytest.fixture
+def problem_invoices():
+    return {
+        "id": "1",
+        "errors": [
+            sap.VendorError.no_address("foo"),
+            sap.VendorError.invalid_financial_sys_code("123AB", "foo"),
+        ],
+    }, {
+        "id": "2",
+        "errors": [
+            sap.MultibyteCharacterError("foo", "‑"),  # noqa: RUF001
+            sap.MultibyteCharacterError("bar", "ƒ"),
+            sap.NoFundReturnedError("foo"),
+        ],
+    }
+
+
+@pytest.fixture
 def generic_alma_invoice_record():
     return {
         "number": "123456",
