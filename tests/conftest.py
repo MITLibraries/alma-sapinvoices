@@ -175,7 +175,13 @@ def mocked_alma():
                 "https://example.com/acq/vendors/vendor_no_address",
                 json=json.load(vendor_no_address_file),
             )
-
+        with open(
+            "tests/fixtures/vendor_invalid_financial_sys_code.json", encoding="utf-8"
+        ) as vendor_invalid_financial_sys_code_file:
+            mocker.get(
+                "https://example.com/acq/vendors/invalid_financial_sys_code",
+                json=json.load(vendor_invalid_financial_sys_code_file),
+            )
         with open("tests/fixtures/funds.json", encoding="utf-8") as funds_file:
             funds = json.load(funds_file)
             mocker.get(
@@ -432,6 +438,8 @@ def invoices_for_sap():
             "vendor": {
                 "name": "Danger Inc.",
                 "code": "FOOBAR-M",
+                "sap_vendor_account": "400000",
+                "sap_vendor_type_flag": "X000",
                 "address": {
                     "lines": [
                         "123 salad Street",
@@ -462,6 +470,8 @@ def invoices_for_sap():
             "vendor": {
                 "name": "some library solutions from salad",
                 "code": "YBPE-M",
+                "sap_vendor_account": "123456",
+                "sap_vendor_type_flag": "0000",
                 "address": {
                     "lines": [
                         "P.O. Box 123456",
@@ -506,6 +516,8 @@ def invoices_for_sap():
             "vendor": {
                 "name": "one address line",
                 "code": "FOOBAR-M",
+                "sap_vendor_account": "400000",
+                "sap_vendor_type_flag": "X000",
                 "address": {
                     "lines": [
                         "123 some street",
@@ -526,83 +538,6 @@ def invoices_for_sap():
         },
     ]
     return invoices
-
-
-@pytest.fixture
-def problem_invoices():
-    problem_invoice_list = [
-        {
-            "fund_errors": ["over-encumbered", "also-over-encumbered"],
-            "multibyte_errors": [
-                {
-                    "field": "vendor:address:lines:0",
-                    "character": "‑",  # noqa: RUF001
-                },
-                {"field": "vendor:city", "character": "ƒ"},
-            ],
-            "date": datetime.datetime(2021, 5, 12, tzinfo=datetime.UTC),
-            "id": "9991",
-            "number": "456789",
-            "type": "monograph",
-            "payment method": "ACCOUNTINGDEPARTMENT",
-            "total amount": 150,
-            "currency": "USD",
-            "vendor": {
-                "name": "Danger Inc.",
-                "code": "FOOBAR-M",
-                "address": {
-                    "lines": [
-                        "12‑3 salad Street",  # noqa: RUF001
-                        "Second Floor",
-                    ],
-                    "city": "San ƒrancisco",
-                    "state or province": "CA",
-                    "postal code": "94109",
-                    "country": "US",
-                },
-            },
-        },
-        {
-            "fund_errors": ["also-over-encumbered"],
-            "multibyte_errors": [
-                {
-                    "field": "vendor:address:lines:0",
-                    "character": "‑",  # noqa: RUF001
-                }
-            ],
-            "date": datetime.datetime(2021, 5, 11, tzinfo=datetime.UTC),
-            "id": "9992",
-            "number": "444555",
-            "type": "monograph",
-            "payment method": "ACCOUNTINGDEPARTMENT",
-            "total amount": 1067.04,
-            "currency": "USD",
-            "vendor": {
-                "name": "some library solutions from salad",
-                "code": "YBPE-M",
-                "address": {
-                    "lines": [
-                        "P.O. Box 123456",
-                    ],
-                    "city": "Atlanta",
-                    "state or province": "GA",
-                    "postal code": "30384‑7991",  # noqa: RUF001
-                    "country": "US",
-                },
-            },
-        },
-        {
-            "vendor_address_error": "YBP-no-address",
-            "date": datetime.datetime(2021, 5, 11, tzinfo=datetime.UTC),
-            "id": "9993",
-            "number": "444666",
-            "type": "monograph",
-            "payment method": "ACCOUNTINGDEPARTMENT",
-            "total amount": 1067.04,
-            "currency": "USD",
-        },
-    ]
-    return problem_invoice_list
 
 
 @pytest.fixture
@@ -649,8 +584,8 @@ B\
 20210518\
 20210518\
 444555210511    \
-X000\
-400000\
+0000\
+123456\
          1067.04\
  \
  \
