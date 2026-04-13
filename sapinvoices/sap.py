@@ -585,7 +585,7 @@ def generate_report(today: datetime.datetime, invoices: list[dict]) -> str:
     for invoice in invoices:
         report += f"\n\n{'':33}MIT LIBRARIES\n\n\n"
         report += f"Date: {today_string:<36}Vendor code   : {invoice['vendor']['code']}\n"
-        report += f"{'Accounting ID :':>57}\n\n"
+        report += f"{'Accounting ID :':>57} {invoice['vendor']['sap_vendor_account']}\n\n"
         report += f"Vendor:  {invoice['vendor']['name']}\n"
         for line in invoice["vendor"]["address"]["lines"]:
             report += f"         {line}\n"

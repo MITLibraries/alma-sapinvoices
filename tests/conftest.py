@@ -328,6 +328,8 @@ def invoices_for_sap_with_different_payment_method():
             "vendor": {
                 "name": "Danger Inc.",
                 "code": "DANGER",
+                "sap_vendor_account": "400000",
+                "sap_vendor_type_flag": "X000",
                 "address": {
                     "lines": [
                         "123 salad Street",
@@ -358,6 +360,8 @@ def invoices_for_sap_with_different_payment_method():
             "vendor": {
                 "name": "some library solutions from salad",
                 "code": "YBPE-M",
+                "sap_vendor_account": "123456",
+                "sap_vendor_type_flag": "0000",
                 "address": {
                     "lines": [
                         "P.O. Box 123456",
@@ -402,6 +406,8 @@ def invoices_for_sap_with_different_payment_method():
             "vendor": {
                 "name": "Foo Bar Books",
                 "code": "FOOBAR",
+                "sap_vendor_account": "400000",
+                "sap_vendor_type_flag": "X000",
                 "address": {
                     "lines": [
                         "123 some street",

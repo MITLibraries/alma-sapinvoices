@@ -598,6 +598,8 @@ def test_generate_report_success():
             "currency": "USD",
             "vendor": {
                 "name": "The Bookhouse, Inc.",
+                "sap_vendor_account": "123456",
+                "sap_vendor_type_flag": "0000",
                 "code": "BKHS",
                 "address": {
                     "lines": [
@@ -639,7 +641,7 @@ def test_generate_report_success():
 
 
 Date: 10/01/2021                          Vendor code   : BKHS
-                                          Accounting ID :
+                                          Accounting ID : 123456
 
 Vendor:  The Bookhouse, Inc.
          123 Main Street
