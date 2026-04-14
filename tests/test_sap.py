@@ -641,7 +641,7 @@ def test_generate_report_success():
 
 
 Date: 10/01/2021                          Vendor code   : BKHS
-                                          Accounting ID : 123456
+                                          VPF Supplier # : 123456
 
 Vendor:  The Bookhouse, Inc.
          123 Main Street
