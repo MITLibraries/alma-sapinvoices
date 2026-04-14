@@ -640,7 +640,7 @@ def test_generate_report_success():
                                  MIT LIBRARIES
 
 
-Date: 10/01/2021                          Vendor code   : BKHS
+Date: 10/01/2021                          Vendor code    : BKHS
                                           VPF Supplier # : 123456
 
 Vendor:  The Bookhouse, Inc.
