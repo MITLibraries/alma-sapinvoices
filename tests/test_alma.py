@@ -194,8 +194,7 @@ def test_get_invoices_by_status(alma_client):
         "total_record_count": 5,
     }
     test_url = (
-        "https://example.com/acq/invoices?invoice_workflow_status"
-        "=test&limit=100&offset=0"
+        "https://example.com/acq/invoices?invoice_workflow_status=test&limit=100&offset=0"
     )
     with requests_mock.Mocker() as mocker:
         mocker.get(

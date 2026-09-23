@@ -2,8 +2,47 @@
 # For MIT developers, we strongly recommend copying the pyproject.toml template from:
 # https://mitlibraries.atlassian.net/wiki/spaces/IN/pages/3432415247/Python+Project+Linters#Template-for-pyproject.toml
 
-[tool.black]
-line-length = 90
+[project]
+name = "sapinvoices"
+version = "1.4.2"
+requires-python = ">=3.13"
+dependencies = [
+  "boto3",
+  "click",
+  "decorator",
+  "fabric[pytest]",
+  "freezegun",
+  "paramiko",
+  "requests",
+  "sentry-sdk",
+]
+
+[project.scripts]
+sap = "sapinvoices.cli:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["sapinvoices*"]
+
+[dependency-groups]
+dev = [
+  "boto3-stubs",
+  "coverage",
+  "coveralls",
+  "mock-ssh-server",
+  "moto",
+  "mypy",
+  "pip-audit",
+  "pre-commit",
+  "pytest",
+  "requests-mock",
+  "ruff",
+  "types-paramiko",
+  "types-requests",
+]
 
 [tool.mypy]
 disallow_untyped_calls = true
@@ -21,7 +60,7 @@ ignore_missing_imports = true
 log_level = "INFO"
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py313"
 
 # set max line length
 line-length = 90
@@ -40,6 +79,7 @@ ignore = [
 
     # project-specific
     "C90",
+    "CPY001", # this repo does not use file-level copyright headers
     "D100",
     "D101",
     "D102",
@@ -48,6 +88,7 @@ ignore = [
     "PLR0912",
     "PLR0913",
     "PLR0915",
+    "PLR0917", # this domain's functions intentionally take several positional args
     "S321",
 ]
 
