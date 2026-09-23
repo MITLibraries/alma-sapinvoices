@@ -12,6 +12,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock* ./
 COPY sapinvoices ./sapinvoices
 COPY config ./config
+COPY sample-data ./sample-data
 
 RUN uv pip install --system .
 
