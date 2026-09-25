@@ -635,7 +635,9 @@ def test_generate_report_success():
     ]
     today = datetime.datetime(2021, 10, 1, tzinfo=datetime.UTC)
     report = sap.generate_report(today, invoices)
-    assert report == """
+    assert (
+        report
+        == """
 
                                  MIT LIBRARIES
 
@@ -669,6 +671,7 @@ Payment Method:  ACCOUNTINGDEPARTMENT
 
 
 \f"""
+    )
 
 
 def test_generate_sap_report_email_final_run():
@@ -782,22 +785,27 @@ def test_calculate_invoices_total_amount():
 
 
 def test_generate_summary_warning():
-    problem_invoices = {
-        "id": "1",
-        "errors": [
-            sap.VendorError.no_address("foo"),
-            sap.VendorError.invalid_financial_sys_code("123AB", "foo"),
-        ],
-    }, {
-        "id": "2",
-        "errors": [
-            sap.MultibyteCharacterError("foo", "‑"),  # noqa: RUF001
-            sap.MultibyteCharacterError("bar", "ƒ"),
-            sap.NoFundReturnedError("foo"),
-        ],
-    }
+    problem_invoices = (
+        {
+            "id": "1",
+            "errors": [
+                sap.VendorError.no_address("foo"),
+                sap.VendorError.invalid_financial_sys_code("123AB", "foo"),
+            ],
+        },
+        {
+            "id": "2",
+            "errors": [
+                sap.MultibyteCharacterError("foo", "‑"),  # noqa: RUF001
+                sap.MultibyteCharacterError("bar", "ƒ"),
+                sap.NoFundReturnedError("foo"),
+            ],
+        },
+    )
     warning_message = sap.generate_summary_warning(problem_invoices)
-    assert warning_message == """Warning! Invoice: 1
+    assert (
+        warning_message
+        == """Warning! Invoice: 1
 No addresses found for vendor: foo
 
 Invalid financial system code: 123AB, for vendor: foo.
@@ -816,6 +824,7 @@ for fund: foo
 Please fix the above before starting a final-run
 
 """  # noqa: RUF001
+    )
 
 
 def test_generate_summary(invoices_for_sap_with_different_payment_method):
@@ -825,7 +834,9 @@ def test_generate_summary(invoices_for_sap_with_different_payment_method):
     summary = sap.generate_summary(
         problem_invoices, invoices_for_sap_with_different_payment_method, dfile, cfile
     )
-    assert summary == """--- MIT Libraries--- Alma to SAP Invoice Feed
+    assert (
+        summary
+        == """--- MIT Libraries--- Alma to SAP Invoice Feed
 
 
 
@@ -848,6 +859,7 @@ Authorized signature __________________________________
 
 BAZ:\t12345\tFoo Bar Books\tFOOBAR
 """
+    )
 
 
 def test_generate_sap_control(sap_data_file):
