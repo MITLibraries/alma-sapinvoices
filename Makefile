@@ -68,7 +68,7 @@ lint-fix: # Run linting, auto fix behaviors where supported
 	uv run ruff check --fix .
 
 security: # Run security / vulnerability checks
-	uv run pip-audit --ignore-vuln GHSA-4xh5-x5gv-qwph
+	uv run pip-audit
 
 ###############################################
 # CLI commands
