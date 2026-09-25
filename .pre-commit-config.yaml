@@ -1,30 +1,29 @@
 default_language_version:
-  python: python3.13
-
-default_stages:
-  - pre-push
-
+  python: python3.12 # set for project python version
 repos:
   - repo: local
     hooks:
-      - id: ruff-format
-        name: ruff-format
-        entry: uv run ruff format --diff
+      - id: black-apply
+        name: black-apply
+        entry: pipenv run black
         language: system
         pass_filenames: true
         types: ["python"]
-
       - id: mypy
         name: mypy
-        entry: uv run mypy
+        entry: pipenv run mypy
         language: system
         pass_filenames: true
         types: ["python"]
-        exclude: "(tests/|output/|migrations/)"
-
-      - id: ruff-check
-        name: ruff-check
-        entry: uv run ruff check
+        exclude: "tests/"
+      - id: ruff-apply
+        name: ruff-apply
+        entry: pipenv run ruff check --fix
         language: system
         pass_filenames: true
         types: ["python"]
+      - id: pip-audit
+        name: pip-audit
+        entry: pipenv run pip-audit --ignore-vuln GHSA-4xh5-x5gv-qwph
+        language: system
+        pass_filenames: false

@@ -49,7 +49,8 @@ def create_sandbox_data(log_level: str | None) -> None:
         contents = json.load(sample_invoice_file)
     invoices_created = load_sample_data(alma_client, contents)
     logger.info(
-        "%s sample invoices created and ready for manual approval in the Alma sandbox UI",
+        "%s sample invoices created and ready for manual approval "
+        "in the Alma sandbox UI",
         invoices_created,
     )
 

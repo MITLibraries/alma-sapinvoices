@@ -261,7 +261,7 @@ def check_for_multibyte(
         # adding the index to the path so we can identify
         # which list element contains the error
         for i, item in enumerate(data):
-            errors.extend(check_for_multibyte(item, f"{path}: line {i + 1}"))
+            errors.extend(check_for_multibyte(item, f"{path}: line {i+1}"))
 
     elif isinstance(data, str):
         # base case - we've reached a string value, check each
@@ -757,7 +757,7 @@ def generate_summary_warning(problem_invoices: list) -> str:
     """
     sections = []
     for invoice in problem_invoices:
-        invoice_lines = f"Warning! Invoice: {invoice['id']}\n"
+        invoice_lines = f'Warning! Invoice: {invoice["id"]}\n'
         invoice_lines += "\n\n".join(str(error) for error in invoice["errors"])
         sections.append(invoice_lines)
     sections.append("Please fix the above before starting a final-run")

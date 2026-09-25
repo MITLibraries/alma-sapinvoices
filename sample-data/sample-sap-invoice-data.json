@@ -160,7 +160,7 @@
             "fund_distribution": [
               {
                 "fund_code": {
-                  "value": "S-CSM-CMMT",
+                  "value": "C-IRC-HCAT",
                   "desc": "Onsite Cataloging"
                 },
                 "amount": 100
@@ -245,7 +245,7 @@
             "fund_distribution": [
               {
                 "fund_code": {
-                  "value": "S-CSM-CMMT",
+                  "value": "C-IRC-HCAT",
                   "desc": "Onsite Cataloging"
                 },
                 "amount": 100
@@ -414,7 +414,7 @@
             "fund_distribution": [
               {
                 "fund_code": {
-                  "value": "S-CSM-CMMT",
+                  "value": "C-IRC-HCAT",
                   "desc": "Onsite Cataloging"
                 },
                 "amount": 100
@@ -499,7 +499,7 @@
             "fund_distribution": [
               {
                 "fund_code": {
-                  "value": "S-CSM-CMMT",
+                  "value": "C-IRC-HCAT",
                   "desc": "Onsite Cataloging"
                 },
                 "amount": 100

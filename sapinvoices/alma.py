@@ -107,7 +107,7 @@ class AlmaClient:
         limit: int = 100,
         _offset: int = 0,
         _records_retrieved: int = 0,
-    ) -> Generator[dict]:
+    ) -> Generator[dict, None, None]:
         """Retrieve paginated results from the Alma API for a given endpoint.
 
         Args:
@@ -167,7 +167,7 @@ class AlmaClient:
         time.sleep(0.1)
         return result.json()
 
-    def get_invoices_by_status(self, status: str) -> Generator[dict]:
+    def get_invoices_by_status(self, status: str) -> Generator[dict, None, None]:
         """Get all invoices with a provided status."""
         invoice_params = {
             "invoice_workflow_status": status,
@@ -186,7 +186,7 @@ class AlmaClient:
         time.sleep(0.1)
         return result.json()
 
-    def get_vendor_invoices(self, vendor_code: str) -> Generator[dict]:
+    def get_vendor_invoices(self, vendor_code: str) -> Generator[dict, None, None]:
         """Get invoices for a given vendor code."""
         endpoint = f"acq/vendors/{vendor_code}/invoices"
         return self.get_paged(endpoint, "invoice")

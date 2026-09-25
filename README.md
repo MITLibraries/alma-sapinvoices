@@ -9,7 +9,7 @@ system and sets transmitted invoices to paid in Alma.
 - To update dependencies: `make update`
 - To run unit tests: `make test`
 - To lint the repo: `make lint`
-- To run the app: `uv run sap --help`
+- To run the app: `pipenv run sap --help`
 
 ## Required ENV
 ```shell

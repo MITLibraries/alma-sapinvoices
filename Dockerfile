@@ -1,21 +1,12 @@
-FROM python:3.13-slim
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends git ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
-
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
-ENV UV_SYSTEM_PYTHON=1
-
+FROM python:3.12-slim as build
 WORKDIR /app
+COPY . .
 
-COPY pyproject.toml uv.lock* ./
-COPY sapinvoices ./sapinvoices
-COPY config ./config
-COPY sample-data ./sample-data
+RUN pip install --no-cache-dir --upgrade pip pipenv
 
-RUN uv pip install --system .
+RUN apt-get update && apt-get upgrade -y && apt-get install -y git
 
-ENTRYPOINT ["sap"]
-CMD []
+COPY Pipfile* /
+RUN pipenv install
 
+ENTRYPOINT ["pipenv", "run", "sap"]
