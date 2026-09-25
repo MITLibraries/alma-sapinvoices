@@ -13,6 +13,7 @@ dependencies = [
   "paramiko",
   "requests",
   "sentry-sdk",
+  "fabric",        # runtime import in sap.py
 ]
 
 [project.scripts]
@@ -30,7 +31,6 @@ dev = [
   "boto3-stubs",
   "coverage",
   "coveralls",
-  "fabric[pytest]>=3.2.3",
   "freezegun>=1.5.5",
   "mock-ssh-server",
   "moto",
@@ -42,6 +42,7 @@ dev = [
   "ruff",
   "types-paramiko",
   "types-requests",
+  "fabric[pytest]",  # adds pytest + fixtures, dev/test only
 ]
 
 [tool.mypy]
