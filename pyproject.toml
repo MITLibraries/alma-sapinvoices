@@ -10,7 +10,7 @@ dependencies = [
   "boto3",
   "click",
   "decorator",
-  "paramiko",
+  "paramiko<5",  # 5.0.0 dropped ssh-rsa host key support; SAP dropbox only offers ssh-rsa
   "requests",
   "sentry-sdk",
   "fabric",        # runtime import in sap.py
